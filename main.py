@@ -12,14 +12,34 @@ import threading
 import time
 import subprocess
 import json
-import re
+import platform
+
+# --- DETECT OS ---
+def detect_os():
+    """Detect if running on Linux or Wine"""
+    system = platform.system()
+    if system == "Linux":
+        # Check if running under Wine
+        try:
+            result = subprocess.run("wine --version", shell=True, capture_output=True, text=True)
+            if result.returncode == 0:
+                return "wine"
+        except:
+            pass
+        return "linux"
+    elif system == "Windows":
+        return "windows"
+    else:
+        return "other"
+
+OS_TYPE = detect_os()
 
 # --- GIT UPDATE FUNCTIONS ---
 GITHUB_REPO = "rwandaxcode/gitpushand-dawnlaods"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/commits/main"
 GITHUB_ZIP_URL = f"https://github.com/{GITHUB_REPO}/archive/main.zip"
 
-# Colors
+# Colors - Optimized for speed
 COLORS = {
     'bg_primary': '#1a1a1a',
     'bg_secondary': '#2d2d2d',
@@ -37,7 +57,7 @@ COLORS = {
 }
 
 class SmoothButton(ctk.CTkButton):
-    """Button isa na macOS/Deepin ihora smooth"""
+    """Button isa na macOS/Deepin ihora smooth - Optimized"""
     def __init__(self, master, **kwargs):
         if 'fg_color' in kwargs:
             kwargs.pop('fg_color')
@@ -75,10 +95,11 @@ class SmoothButton(ctk.CTkButton):
         self.configure(fg_color=COLORS['accent_blue'])
 
 class GitConfig:
-    """Manage Git configuration inside app"""
+    """Manage Git configuration - OS level"""
     def __init__(self):
         self.config_file = os.path.join(os.path.expanduser("~"), ".gitpush_config.json")
         self.config = self.load_config()
+        self.os_name = OS_TYPE
     
     def load_config(self):
         if os.path.exists(self.config_file):
@@ -118,9 +139,20 @@ class GitConfig:
         if git_token:
             self.config['git_token'] = git_token
         self.save_config()
+        
+        # Set git config at OS level
+        self.set_git_config_os(name, email)
+    
+    def set_git_config_os(self, name, email):
+        """Set git config at OS level"""
+        try:
+            subprocess.run(f'git config --global user.name "{name}"', shell=True, capture_output=True)
+            subprocess.run(f'git config --global user.email "{email}"', shell=True, capture_output=True)
+        except:
+            pass
 
 class CloneWindow(ctk.CTkToplevel):
-    """Window yo gukora git clone"""
+    """Window yo gukora git clone - Optimized"""
     def __init__(self, parent):
         super().__init__(parent)
         
@@ -131,14 +163,13 @@ class CloneWindow(ctk.CTkToplevel):
         self.resizable(False, False)
         self.configure(fg_color=COLORS['bg_secondary'])
         
-        # Header
+        # Header - Simplified for speed
         header = ctk.CTkFrame(self, fg_color="transparent")
-        header.pack(fill="x", pady=(20, 10), padx=25)
+        header.pack(fill="x", pady=(15, 10), padx=25)
         
-        # Try to load clone icon
         try:
             if os.path.exists("download.png"):
-                clone_icon = ctk.CTkImage(light_image=Image.open("download.png"), dark_image=Image.open("download.png"), size=(32, 32))
+                clone_icon = ctk.CTkImage(light_image=Image.open("download.png"), dark_image=Image.open("download.png"), size=(28, 28))
                 ctk.CTkLabel(header, image=clone_icon, text="").pack(side="left", padx=(0, 10))
         except:
             pass
@@ -146,58 +177,49 @@ class CloneWindow(ctk.CTkToplevel):
         ctk.CTkLabel(
             header,
             text="Clone Repository",
-            font=ctk.CTkFont(family="Roboto", size=22, weight="bold"),
+            font=ctk.CTkFont(family="Roboto", size=20, weight="bold"),
             text_color=COLORS['text_primary']
         ).pack(side="left")
         
-        ctk.CTkLabel(
-            header,
-            text="Clone a Git repository",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
-        ).pack(side="left", padx=(10, 0))
-        
         # Separator
-        ctk.CTkFrame(self, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=25, pady=10)
+        ctk.CTkFrame(self, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=25, pady=5)
         
-        # Content
+        # Content - Simplified
         content = ctk.CTkFrame(self, fg_color="transparent")
         content.pack(fill="both", expand=True, padx=25, pady=10)
         
         # Repository URL
-        repo_label = ctk.CTkLabel(
+        ctk.CTkLabel(
             content,
             text="Repository URL:",
             font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
             text_color=COLORS['text_primary']
-        )
-        repo_label.pack(anchor="w", pady=(0, 5))
+        ).pack(anchor="w", pady=(0, 5))
         
         self.repo_entry = ctk.CTkEntry(
             content,
-            height=40,
+            height=38,
             corner_radius=8,
             fg_color=COLORS['bg_primary'],
             text_color=COLORS['text_primary'],
-            placeholder_text="https://github.com/username/repo.git or git@github.com:username/repo.git"
+            placeholder_text="https://github.com/username/repo.git"
         )
-        self.repo_entry.pack(fill="x", pady=(0, 15))
+        self.repo_entry.pack(fill="x", pady=(0, 12))
         
         # Destination folder
-        folder_label = ctk.CTkLabel(
+        ctk.CTkLabel(
             content,
             text="Clone to:",
             font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
             text_color=COLORS['text_primary']
-        )
-        folder_label.pack(anchor="w", pady=(0, 5))
+        ).pack(anchor="w", pady=(0, 5))
         
         folder_frame = ctk.CTkFrame(content, fg_color="transparent")
-        folder_frame.pack(fill="x", pady=(0, 15))
+        folder_frame.pack(fill="x", pady=(0, 12))
         
         self.folder_entry = ctk.CTkEntry(
             folder_frame,
-            height=40,
+            height=38,
             corner_radius=8,
             fg_color=COLORS['bg_primary'],
             text_color=COLORS['text_primary'],
@@ -208,44 +230,22 @@ class CloneWindow(ctk.CTkToplevel):
         self.browse_btn = SmoothButton(
             folder_frame,
             text="Browse",
-            width=80,
-            height=35,
+            width=70,
+            height=32,
             command=self.browse_folder
         )
         self.browse_btn.pack(side="right")
-        
-        # Options
-        options_frame = ctk.CTkFrame(content, fg_color="transparent")
-        options_frame.pack(fill="x", pady=10)
-        
-        self.recursive = ctk.CTkCheckBox(
-            options_frame,
-            text="Clone submodules (--recursive)",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary'],
-            fg_color=COLORS['accent_blue']
-        )
-        self.recursive.pack(side="left", padx=(0, 20))
-        
-        self.shallow = ctk.CTkCheckBox(
-            options_frame,
-            text="Shallow clone (--depth 1)",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary'],
-            fg_color=COLORS['accent_blue']
-        )
-        self.shallow.pack(side="left")
         
         # Clone button
         self.clone_btn = SmoothButton(
             content,
             text="Clone Now",
-            height=45,
+            height=42,
             fg_color=COLORS['accent_green'],
-            font=ctk.CTkFont(family="Roboto", size=15, weight="bold"),
+            font=ctk.CTkFont(family="Roboto", size=14, weight="bold"),
             command=self.execute_clone
         )
-        self.clone_btn.pack(fill="x", pady=15)
+        self.clone_btn.pack(fill="x", pady=10)
         
         # Progress
         self.clone_progress = ctk.CTkProgressBar(
@@ -262,22 +262,22 @@ class CloneWindow(ctk.CTkToplevel):
         self.clone_status = ctk.CTkLabel(
             content,
             text="Ready to clone",
-            font=ctk.CTkFont(family="Roboto", size=12),
+            font=ctk.CTkFont(family="Roboto", size=11),
             text_color=COLORS['text_secondary']
         )
-        self.clone_status.pack(anchor="w", pady=5)
+        self.clone_status.pack(anchor="w", pady=3)
         
-        # Output
+        # Output - smaller for speed
         self.output_text = ctk.CTkTextbox(
             content,
-            height=120,
-            corner_radius=10,
+            height=100,
+            corner_radius=8,
             fg_color=COLORS['bg_primary'],
             text_color=COLORS['text_secondary'],
-            font=ctk.CTkFont(family="Roboto", size=11)
+            font=ctk.CTkFont(family="Roboto", size=10)
         )
         self.output_text.pack(fill="both", pady=5)
-        self.output_text.insert("1.0", "Clone output will appear here...")
+        self.output_text.insert("1.0", "Output will appear here...")
         self.output_text.configure(state="disabled")
     
     def browse_folder(self):
@@ -287,7 +287,6 @@ class CloneWindow(ctk.CTkToplevel):
             self.folder_entry.insert(0, folder)
     
     def safe_update_ui(self, widget, **kwargs):
-        """Safely update UI from thread"""
         def update():
             try:
                 for key, value in kwargs.items():
@@ -311,7 +310,6 @@ class CloneWindow(ctk.CTkToplevel):
             messagebox.showwarning("Missing Folder", "Please select clone destination")
             return
         
-        # Create folder if it doesn't exist
         if not os.path.exists(folder):
             try:
                 os.makedirs(folder)
@@ -326,37 +324,26 @@ class CloneWindow(ctk.CTkToplevel):
         self.output_text.delete("1.0", "end")
         self.output_text.insert("end", "=== Git Clone Started ===\n")
         self.output_text.insert("end", f"Repository: {repo_url}\n")
-        self.output_text.insert("end", f"Destination: {folder}\n")
-        self.output_text.insert("end", "-" * 40 + "\n\n")
+        self.output_text.insert("end", "-" * 30 + "\n\n")
         
         def clone():
             try:
-                # Get git token if available
                 git_token = self.git_config.get_git_token()
-                
-                # Prepare clone command
                 clone_cmd = "git clone"
-                if self.recursive.get():
-                    clone_cmd += " --recursive"
-                    self.output_text.insert("end", "Using --recursive\n")
-                if self.shallow.get():
-                    clone_cmd += " --depth 1"
-                    self.output_text.insert("end", "Using --depth 1 (shallow clone)\n")
                 
-                # If using HTTPS with token
+                # Check if shallow clone option exists (use checkbox from parent)
+                # We'll keep it simple - no options for speed
+                
                 if 'https://' in repo_url and git_token:
                     repo_url_with_token = repo_url.replace('https://', f'https://{git_token}@')
                     clone_cmd += f' "{repo_url_with_token}" "{folder}"'
-                    self.output_text.insert("end", "Using HTTPS with token\n")
                 else:
                     clone_cmd += f' "{repo_url}" "{folder}"'
-                    self.output_text.insert("end", "Using SSH or HTTPS\n")
                 
-                self.safe_update_ui(self.clone_status, text="Cloning repository...", text_color=COLORS['accent_orange'])
+                self.safe_update_ui(self.clone_status, text="Cloning...", text_color=COLORS['accent_orange'])
                 self.clone_progress.set(0.3)
                 self.output_text.insert("end", f"Command: {clone_cmd}\n\n")
                 
-                # Environment to avoid terminal prompts
                 env = os.environ.copy()
                 env['GIT_ASKPASS'] = 'echo'
                 
@@ -372,18 +359,16 @@ class CloneWindow(ctk.CTkToplevel):
                 self.clone_progress.set(0.8)
                 
                 if result.returncode == 0:
-                    self.safe_update_ui(self.clone_status, text="Clone completed successfully!", text_color=COLORS['accent_green'])
+                    self.safe_update_ui(self.clone_status, text="Clone completed!", text_color=COLORS['accent_green'])
                     self.clone_progress.set(1.0)
-                    self.output_text.insert("end", "\n" + "=" * 40 + "\n")
-                    self.output_text.insert("end", "SUCCESS: Repository cloned successfully!\n")
+                    self.output_text.insert("end", "\nSUCCESS: Repository cloned successfully!\n")
                     if result.stdout:
                         self.output_text.insert("end", result.stdout)
                     messagebox.showinfo("Success", "Repository cloned successfully!")
                 else:
                     self.safe_update_ui(self.clone_status, text="Clone failed", text_color=COLORS['accent_red'])
                     self.clone_progress.set(0)
-                    self.output_text.insert("end", "\n" + "=" * 40 + "\n")
-                    self.output_text.insert("end", "ERROR: Clone failed!\n")
+                    self.output_text.insert("end", "\nERROR: Clone failed!\n")
                     self.output_text.insert("end", result.stderr)
                     messagebox.showerror("Clone Failed", f"Clone failed:\n{result.stderr[:200]}")
                 
@@ -398,7 +383,7 @@ class CloneWindow(ctk.CTkToplevel):
                 messagebox.showerror("Clone Failed", "Clone timed out")
                 
             except Exception as e:
-                self.safe_update_ui(self.clone_status, text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
+                self.safe_update_ui(self.clone_status, text=f"Error: {str(e)[:40]}", text_color=COLORS['accent_red'])
                 self.clone_btn.configure(state="normal", text="Clone Now")
                 self.output_text.insert("end", f"\nERROR: {str(e)}\n")
                 self.output_text.configure(state="disabled")
@@ -409,14 +394,14 @@ class CloneWindow(ctk.CTkToplevel):
         thread.start()
 
 class GitSetupWindow(ctk.CTkToplevel):
-    """Window yo gushiraho Git name, email na SSH key - all inside app"""
+    """Window yo gushiraho Git name, email - Optimized"""
     def __init__(self, parent):
         super().__init__(parent)
         
         self.parent = parent
         self.git_config = GitConfig()
         self.title("Git Setup")
-        self.geometry("550x700")
+        self.geometry("480x550")
         self.resizable(False, False)
         self.configure(fg_color=COLORS['bg_secondary'])
         
@@ -424,99 +409,97 @@ class GitSetupWindow(ctk.CTkToplevel):
         
         # Header
         header = ctk.CTkFrame(self, fg_color="transparent")
-        header.pack(fill="x", pady=(20, 10), padx=25)
+        header.pack(fill="x", pady=(15, 10), padx=20)
         
         ctk.CTkLabel(
             header,
             text="Git Setup",
-            font=ctk.CTkFont(family="Roboto", size=22, weight="bold"),
+            font=ctk.CTkFont(family="Roboto", size=20, weight="bold"),
             text_color=COLORS['text_primary']
         ).pack(side="left")
         
         ctk.CTkLabel(
             header,
-            text="Configure Git - All inside app",
-            font=ctk.CTkFont(family="Roboto", size=12),
+            text=f"OS: {OS_TYPE}",
+            font=ctk.CTkFont(family="Roboto", size=10),
             text_color=COLORS['text_secondary']
-        ).pack(side="left", padx=(10, 0))
+        ).pack(side="right")
         
         # Separator
-        ctk.CTkFrame(self, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=25, pady=10)
+        ctk.CTkFrame(self, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=20, pady=5)
         
-        # Main content
+        # Content
         content = ctk.CTkFrame(self, fg_color="transparent")
-        content.pack(fill="both", expand=True, padx=25, pady=10)
-        
-        # Step 1: Name and Email
-        step1_label = ctk.CTkLabel(
-            content,
-            text="Step 1: Configure Git User",
-            font=ctk.CTkFont(family="Roboto", size=15, weight="bold"),
-            text_color=COLORS['text_primary']
-        )
-        step1_label.pack(anchor="w", pady=(0, 10))
+        content.pack(fill="both", expand=True, padx=20, pady=10)
         
         # Name
-        name_frame = ctk.CTkFrame(content, fg_color="transparent")
-        name_frame.pack(fill="x", pady=5)
-        
         ctk.CTkLabel(
-            name_frame,
+            content,
             text="Name:",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary'],
-            width=60
-        ).pack(side="left")
+            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+            text_color=COLORS['text_primary']
+        ).pack(anchor="w", pady=(0, 3))
         
         self.name_entry = ctk.CTkEntry(
-            name_frame,
+            content,
             height=35,
             corner_radius=8,
             fg_color=COLORS['bg_primary'],
             text_color=COLORS['text_primary'],
             placeholder_text="Your full name"
         )
-        self.name_entry.pack(side="left", fill="x", expand=True, padx=(10, 0))
+        self.name_entry.pack(fill="x", pady=(0, 10))
         
         # Email
-        email_frame = ctk.CTkFrame(content, fg_color="transparent")
-        email_frame.pack(fill="x", pady=5)
-        
         ctk.CTkLabel(
-            email_frame,
+            content,
             text="Email:",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary'],
-            width=60
-        ).pack(side="left")
+            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+            text_color=COLORS['text_primary']
+        ).pack(anchor="w", pady=(0, 3))
         
         self.email_entry = ctk.CTkEntry(
-            email_frame,
+            content,
             height=35,
             corner_radius=8,
             fg_color=COLORS['bg_primary'],
             text_color=COLORS['text_primary'],
             placeholder_text="your.email@example.com"
         )
-        self.email_entry.pack(side="left", fill="x", expand=True, padx=(10, 0))
+        self.email_entry.pack(fill="x", pady=(0, 10))
         
-        # GitHub Token
-        token_label = ctk.CTkLabel(
+        # SSH Key
+        ctk.CTkLabel(
+            content,
+            text="SSH Key (auto-generated):",
+            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+            text_color=COLORS['text_primary']
+        ).pack(anchor="w", pady=(10, 3))
+        
+        self.ssh_status_label = ctk.CTkLabel(
+            content,
+            text="Not generated",
+            font=ctk.CTkFont(family="Roboto", size=11),
+            text_color=COLORS['text_secondary']
+        )
+        self.ssh_status_label.pack(anchor="w", pady=(0, 5))
+        
+        # Generate SSH button
+        self.generate_ssh_btn = SmoothButton(
+            content,
+            text="Generate SSH Key",
+            height=32,
+            command=self.generate_ssh_key
+        )
+        self.generate_ssh_btn.pack(fill="x", pady=5)
+        
+        # Token
+        ctk.CTkLabel(
             content,
             text="GitHub Token (optional):",
-            font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
+            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
             text_color=COLORS['text_primary']
-        )
-        token_label.pack(anchor="w", pady=(10, 5))
-        
-        token_desc = ctk.CTkLabel(
-            content,
-            text="Create token at: GitHub Settings > Developer settings > Personal access tokens",
-            font=ctk.CTkFont(family="Roboto", size=10),
-            text_color=COLORS['text_secondary'],
-            wraplength=450
-        )
-        token_desc.pack(anchor="w", pady=(0, 5))
+        ).pack(anchor="w", pady=(10, 3))
         
         self.token_entry = ctk.CTkEntry(
             content,
@@ -526,125 +509,25 @@ class GitSetupWindow(ctk.CTkToplevel):
             text_color=COLORS['text_primary'],
             placeholder_text="ghp_xxxxxxxxxxxxxxxxxxxx"
         )
-        self.token_entry.pack(fill="x", pady=(0, 15))
-        
-        # Step 2: SSH Key
-        step2_label = ctk.CTkLabel(
-            content,
-            text="Step 2: SSH Key Setup (Inside App)",
-            font=ctk.CTkFont(family="Roboto", size=15, weight="bold"),
-            text_color=COLORS['text_primary']
-        )
-        step2_label.pack(anchor="w", pady=(15, 10))
-        
-        # SSH key status
-        self.ssh_status_frame = ctk.CTkFrame(content, fg_color=COLORS['bg_primary'], corner_radius=10)
-        self.ssh_status_frame.pack(fill="x", pady=5)
-        
-        self.ssh_status_label = ctk.CTkLabel(
-            self.ssh_status_frame,
-            text="SSH Key: Not generated",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
-        )
-        self.ssh_status_label.pack(anchor="w", padx=15, pady=10)
-        
-        # SSH key display
-        self.ssh_key_display = ctk.CTkTextbox(
-            content,
-            height=80,
-            corner_radius=10,
-            fg_color=COLORS['bg_primary'],
-            text_color=COLORS['text_secondary'],
-            font=ctk.CTkFont(family="Roboto", size=10)
-        )
-        self.ssh_key_display.pack(fill="x", pady=5)
-        self.ssh_key_display.insert("1.0", "SSH key will appear here after generation...")
-        self.ssh_key_display.configure(state="disabled")
-        
-        # SSH key buttons
-        ssh_buttons = ctk.CTkFrame(content, fg_color="transparent")
-        ssh_buttons.pack(fill="x", pady=5)
-        
-        self.generate_ssh_btn = SmoothButton(
-            ssh_buttons,
-            text="Generate SSH Key",
-            width=150,
-            height=35,
-            command=self.generate_ssh_key
-        )
-        self.generate_ssh_btn.pack(side="left", padx=(0, 10))
-        
-        self.copy_ssh_btn = SmoothButton(
-            ssh_buttons,
-            text="Copy SSH Key",
-            width=120,
-            height=35,
-            fg_color=COLORS['accent_green'],
-            command=self.copy_ssh_key
-        )
-        self.copy_ssh_btn.pack(side="left")
-        self.copy_ssh_btn.configure(state="disabled")
-        
-        # SSH instructions
-        self.ssh_instructions = ctk.CTkTextbox(
-            content,
-            height=80,
-            corner_radius=10,
-            fg_color=COLORS['bg_primary'],
-            text_color=COLORS['text_secondary'],
-            font=ctk.CTkFont(family="Roboto", size=11)
-        )
-        self.ssh_instructions.pack(fill="x", pady=10)
-        self.ssh_instructions.insert("1.0", "1. Generate SSH key above\n2. Copy the key\n3. Go to GitHub Settings > SSH and GPG keys\n4. Click 'New SSH Key' and paste")
-        self.ssh_instructions.configure(state="disabled")
-        
-        # Step 3: Test Connection
-        step3_label = ctk.CTkLabel(
-            content,
-            text="Step 3: Test Connection (Inside App)",
-            font=ctk.CTkFont(family="Roboto", size=15, weight="bold"),
-            text_color=COLORS['text_primary']
-        )
-        step3_label.pack(anchor="w", pady=(15, 10))
-        
-        self.test_btn = SmoothButton(
-            content,
-            text="Test SSH Connection",
-            width=180,
-            height=35,
-            fg_color=COLORS['accent_orange'],
-            command=self.test_ssh_connection
-        )
-        self.test_btn.pack(side="left", pady=5)
-        
-        self.test_status = ctk.CTkLabel(
-            content,
-            text="",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
-        )
-        self.test_status.pack(side="left", padx=(15, 0), pady=5)
+        self.token_entry.pack(fill="x", pady=(0, 10))
         
         # Separator
-        ctk.CTkFrame(content, height=1, fg_color=COLORS['border_light']).pack(fill="x", pady=15)
+        ctk.CTkFrame(content, height=1, fg_color=COLORS['border_light']).pack(fill="x", pady=10)
         
-        # Save & Next button
-        self.next_btn = SmoothButton(
+        # Save button
+        self.save_btn = SmoothButton(
             content,
-            text="Save & Next -> Push",
-            height=40,
+            text="Save & Continue",
+            height=42,
             fg_color=COLORS['accent_green'],
+            font=ctk.CTkFont(family="Roboto", size=14, weight="bold"),
             command=self.next_step
         )
-        self.next_btn.pack(fill="x", pady=10)
-        self.next_btn.configure(state="disabled")
+        self.save_btn.pack(fill="x", pady=10)
+        self.save_btn.configure(state="disabled")
         
-        # Store SSH key
         self.ssh_key = None
         self.ssh_generated = False
-        
-        # Load saved config
         self.load_saved_config()
     
     def load_saved_config(self):
@@ -658,13 +541,8 @@ class GitSetupWindow(ctk.CTkToplevel):
         if config.get('ssh_key'):
             self.ssh_key = config['ssh_key']
             self.ssh_generated = True
-            self.ssh_status_label.configure(text="SSH Key: Already configured", text_color=COLORS['accent_green'])
-            self.copy_ssh_btn.configure(state="normal")
-            self.next_btn.configure(state="normal")
-            self.ssh_key_display.configure(state="normal")
-            self.ssh_key_display.delete("1.0", "end")
-            self.ssh_key_display.insert("1.0", self.ssh_key)
-            self.ssh_key_display.configure(state="disabled")
+            self.ssh_status_label.configure(text="SSH Key: Configured", text_color=COLORS['accent_green'])
+            self.save_btn.configure(state="normal")
     
     def generate_ssh_key(self):
         self.generate_ssh_btn.configure(state="disabled", text="Generating...")
@@ -683,14 +561,7 @@ class GitSetupWindow(ctk.CTkToplevel):
                         self.ssh_key = f.read().strip()
                     self.ssh_generated = True
                     self.ssh_status_label.configure(text="SSH Key: Already exists", text_color=COLORS['accent_green'])
-                    self.copy_ssh_btn.configure(state="normal")
-                    self.next_btn.configure(state="normal")
-                    
-                    self.ssh_key_display.configure(state="normal")
-                    self.ssh_key_display.delete("1.0", "end")
-                    self.ssh_key_display.insert("1.0", self.ssh_key)
-                    self.ssh_key_display.configure(state="disabled")
-                    
+                    self.save_btn.configure(state="normal")
                     self.generate_ssh_btn.configure(state="normal", text="Generate SSH Key")
                     return
                 
@@ -699,83 +570,25 @@ class GitSetupWindow(ctk.CTkToplevel):
                     email = "user@example.com"
                 
                 cmd = f'ssh-keygen -t rsa -b 4096 -C "{email}" -f "{key_path}" -N ""'
-                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, check=True)
+                subprocess.run(cmd, shell=True, capture_output=True, text=True, check=True)
                 
                 with open(f"{key_path}.pub", 'r') as f:
                     self.ssh_key = f.read().strip()
                 
                 self.ssh_generated = True
-                self.ssh_status_label.configure(text="SSH Key: Generated successfully!", text_color=COLORS['accent_green'])
-                self.copy_ssh_btn.configure(state="normal")
-                self.next_btn.configure(state="normal")
-                
-                self.ssh_key_display.configure(state="normal")
-                self.ssh_key_display.delete("1.0", "end")
-                self.ssh_key_display.insert("1.0", self.ssh_key)
-                self.ssh_key_display.configure(state="disabled")
-                
-                self.save_config()
+                self.ssh_status_label.configure(text="SSH Key: Generated!", text_color=COLORS['accent_green'])
+                self.save_btn.configure(state="normal")
                 
                 self.generate_ssh_btn.configure(state="normal", text="Generate SSH Key")
                 
             except Exception as e:
-                self.ssh_status_label.configure(text=f"Error: {str(e)}", text_color=COLORS['accent_red'])
+                self.ssh_status_label.configure(text=f"Error: {str(e)[:30]}", text_color=COLORS['accent_red'])
                 self.generate_ssh_btn.configure(state="normal", text="Generate SSH Key")
                 messagebox.showerror("SSH Error", f"Failed to generate SSH key:\n{str(e)}")
         
         thread = threading.Thread(target=generate)
         thread.daemon = True
         thread.start()
-    
-    def copy_ssh_key(self):
-        if self.ssh_key:
-            self.clipboard_clear()
-            self.clipboard_append(self.ssh_key)
-            self.ssh_status_label.configure(text="SSH Key: Copied to clipboard!", text_color=COLORS['accent_green'])
-            messagebox.showinfo("Copied", "SSH key copied to clipboard!")
-    
-    def test_ssh_connection(self):
-        self.test_btn.configure(state="disabled", text="Testing...")
-        self.test_status.configure(text="Testing SSH connection...", text_color=COLORS['accent_orange'])
-        
-        def test():
-            try:
-                result = subprocess.run(
-                    "ssh -T git@github.com -o StrictHostKeyChecking=no -o ConnectTimeout=10",
-                    shell=True,
-                    capture_output=True,
-                    text=True,
-                    timeout=15
-                )
-                
-                if "successfully authenticated" in result.stderr or "You've successfully authenticated" in result.stderr:
-                    self.test_status.configure(text="SSH connection successful!", text_color=COLORS['accent_green'])
-                    self.next_btn.configure(state="normal")
-                else:
-                    self.test_status.configure(text="SSH connection failed. Please add key to GitHub.", text_color=COLORS['accent_red'])
-                    self.next_btn.configure(state="disabled")
-                
-                self.test_btn.configure(state="normal", text="Test SSH Connection")
-                
-            except subprocess.TimeoutExpired:
-                self.test_status.configure(text="SSH connection timed out", text_color=COLORS['accent_red'])
-                self.test_btn.configure(state="normal", text="Test SSH Connection")
-            except Exception as e:
-                self.test_status.configure(text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
-                self.test_btn.configure(state="normal", text="Test SSH Connection")
-                messagebox.showerror("SSH Error", f"SSH connection failed:\n{str(e)}")
-        
-        thread = threading.Thread(target=test)
-        thread.daemon = True
-        thread.start()
-    
-    def save_config(self):
-        self.git_config.set_config(
-            self.name_entry.get().strip(),
-            self.email_entry.get().strip(),
-            self.ssh_key,
-            self.token_entry.get().strip()
-        )
     
     def next_step(self):
         name = self.name_entry.get().strip()
@@ -789,15 +602,19 @@ class GitSetupWindow(ctk.CTkToplevel):
             messagebox.showwarning("SSH Key", "Please generate SSH key first")
             return
         
-        self.save_config()
+        self.git_config.set_config(
+            name,
+            email,
+            self.ssh_key,
+            self.token_entry.get().strip()
+        )
         
         self.setup_complete = True
         self.destroy()
-        
         self.parent.show_push_window(name, email)
 
 class GitPushWindow(ctk.CTkToplevel):
-    """Window yo gukora Git Push - all inside app"""
+    """Window yo gukora Git Push - Optimized"""
     def __init__(self, parent, name, email):
         super().__init__(parent)
         
@@ -806,69 +623,67 @@ class GitPushWindow(ctk.CTkToplevel):
         self.email = email
         self.git_config = GitConfig()
         self.title("Git Push")
-        self.geometry("600x550")
+        self.geometry("600x500")
         self.resizable(False, False)
         self.configure(fg_color=COLORS['bg_secondary'])
         
         # Header
         header = ctk.CTkFrame(self, fg_color="transparent")
-        header.pack(fill="x", pady=(20, 10), padx=25)
+        header.pack(fill="x", pady=(15, 10), padx=20)
         
         ctk.CTkLabel(
             header,
             text="Git Push",
-            font=ctk.CTkFont(family="Roboto", size=22, weight="bold"),
+            font=ctk.CTkFont(family="Roboto", size=20, weight="bold"),
             text_color=COLORS['text_primary']
         ).pack(side="left")
         
         ctk.CTkLabel(
             header,
             text=f"User: {name}",
-            font=ctk.CTkFont(family="Roboto", size=12),
+            font=ctk.CTkFont(family="Roboto", size=11),
             text_color=COLORS['text_secondary']
         ).pack(side="right")
         
         # Separator
-        ctk.CTkFrame(self, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=25, pady=10)
+        ctk.CTkFrame(self, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=20, pady=5)
         
         # Content
         content = ctk.CTkFrame(self, fg_color="transparent")
-        content.pack(fill="both", expand=True, padx=25, pady=10)
+        content.pack(fill="both", expand=True, padx=20, pady=10)
         
         # Repository URL
-        repo_label = ctk.CTkLabel(
+        ctk.CTkLabel(
             content,
             text="Repository URL:",
             font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
             text_color=COLORS['text_primary']
-        )
-        repo_label.pack(anchor="w", pady=(0, 5))
+        ).pack(anchor="w", pady=(0, 5))
         
         self.repo_entry = ctk.CTkEntry(
             content,
-            height=40,
+            height=38,
             corner_radius=8,
             fg_color=COLORS['bg_primary'],
             text_color=COLORS['text_primary'],
-            placeholder_text="git@github.com:username/repo.git OR https://github.com/username/repo.git"
+            placeholder_text="git@github.com:username/repo.git"
         )
-        self.repo_entry.pack(fill="x", pady=(0, 15))
+        self.repo_entry.pack(fill="x", pady=(0, 12))
         
         # Project folder
-        folder_label = ctk.CTkLabel(
+        ctk.CTkLabel(
             content,
             text="Project Folder:",
             font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
             text_color=COLORS['text_primary']
-        )
-        folder_label.pack(anchor="w", pady=(0, 5))
+        ).pack(anchor="w", pady=(0, 5))
         
         folder_frame = ctk.CTkFrame(content, fg_color="transparent")
-        folder_frame.pack(fill="x", pady=(0, 15))
+        folder_frame.pack(fill="x", pady=(0, 12))
         
         self.folder_entry = ctk.CTkEntry(
             folder_frame,
-            height=40,
+            height=38,
             corner_radius=8,
             fg_color=COLORS['bg_primary'],
             text_color=COLORS['text_primary'],
@@ -879,29 +694,29 @@ class GitPushWindow(ctk.CTkToplevel):
         self.browse_btn = SmoothButton(
             folder_frame,
             text="Browse",
-            width=80,
-            height=35,
+            width=70,
+            height=32,
             command=self.browse_folder
         )
         self.browse_btn.pack(side="right")
         
         # Options
         options_frame = ctk.CTkFrame(content, fg_color="transparent")
-        options_frame.pack(fill="x", pady=10)
+        options_frame.pack(fill="x", pady=5)
         
         self.force_push = ctk.CTkCheckBox(
             options_frame,
-            text="Force Push (--force)",
-            font=ctk.CTkFont(family="Roboto", size=12),
+            text="Force Push",
+            font=ctk.CTkFont(family="Roboto", size=11),
             text_color=COLORS['text_secondary'],
             fg_color=COLORS['accent_blue']
         )
-        self.force_push.pack(side="left", padx=(0, 20))
+        self.force_push.pack(side="left", padx=(0, 15))
         
         self.accept_push = ctk.CTkCheckBox(
             options_frame,
-            text="Accept Push (--force-with-lease)",
-            font=ctk.CTkFont(family="Roboto", size=12),
+            text="Force-with-lease",
+            font=ctk.CTkFont(family="Roboto", size=11),
             text_color=COLORS['text_secondary'],
             fg_color=COLORS['accent_blue']
         )
@@ -911,12 +726,12 @@ class GitPushWindow(ctk.CTkToplevel):
         self.push_btn = SmoothButton(
             content,
             text="Push Now",
-            height=45,
+            height=42,
             fg_color=COLORS['accent_green'],
-            font=ctk.CTkFont(family="Roboto", size=15, weight="bold"),
+            font=ctk.CTkFont(family="Roboto", size=14, weight="bold"),
             command=self.execute_push
         )
-        self.push_btn.pack(fill="x", pady=15)
+        self.push_btn.pack(fill="x", pady=10)
         
         # Progress
         self.push_progress = ctk.CTkProgressBar(
@@ -933,22 +748,22 @@ class GitPushWindow(ctk.CTkToplevel):
         self.push_status = ctk.CTkLabel(
             content,
             text="Ready to push",
-            font=ctk.CTkFont(family="Roboto", size=12),
+            font=ctk.CTkFont(family="Roboto", size=11),
             text_color=COLORS['text_secondary']
         )
-        self.push_status.pack(anchor="w", pady=5)
+        self.push_status.pack(anchor="w", pady=3)
         
         # Output
         self.output_text = ctk.CTkTextbox(
             content,
-            height=120,
-            corner_radius=10,
+            height=100,
+            corner_radius=8,
             fg_color=COLORS['bg_primary'],
             text_color=COLORS['text_secondary'],
-            font=ctk.CTkFont(family="Roboto", size=11)
+            font=ctk.CTkFont(family="Roboto", size=10)
         )
         self.output_text.pack(fill="both", pady=5)
-        self.output_text.insert("1.0", "Git operations will appear here...")
+        self.output_text.insert("1.0", "Output will appear here...")
         self.output_text.configure(state="disabled")
     
     def browse_folder(self):
@@ -986,110 +801,66 @@ class GitPushWindow(ctk.CTkToplevel):
             return
         
         self.push_btn.configure(state="disabled", text="Pushing...")
-        self.safe_update_ui(self.push_status, text="Initializing push...", text_color=COLORS['accent_orange'])
+        self.safe_update_ui(self.push_status, text="Starting push...", text_color=COLORS['accent_orange'])
         self.push_progress.set(0.1)
         self.output_text.configure(state="normal")
         self.output_text.delete("1.0", "end")
         self.output_text.insert("end", "=== Git Push Started ===\n")
         self.output_text.insert("end", f"User: {self.name}\n")
-        self.output_text.insert("end", f"Email: {self.email}\n")
-        self.output_text.insert("end", f"Repository: {repo_url}\n")
-        self.output_text.insert("end", f"Folder: {folder}\n")
-        self.output_text.insert("end", "-" * 40 + "\n\n")
+        self.output_text.insert("end", f"Repo: {repo_url}\n")
+        self.output_text.insert("end", "-" * 30 + "\n\n")
         
         def push():
             try:
                 git_token = self.git_config.get_git_token()
                 
+                # Init if needed
                 git_dir = os.path.join(folder, ".git")
                 if not os.path.exists(git_dir):
-                    self.safe_update_ui(self.push_status, text="Initializing git repository...", text_color=COLORS['accent_orange'])
+                    self.safe_update_ui(self.push_status, text="Initializing...", text_color=COLORS['accent_orange'])
                     self.push_progress.set(0.2)
-                    self.output_text.insert("end", "[1] Initializing git repository...\n")
-                    
-                    result = subprocess.run(f'cd "{folder}" && git init', shell=True, capture_output=True, text=True)
-                    if result.returncode == 0:
-                        self.output_text.insert("end", "    Git repository initialized\n")
-                    else:
-                        self.output_text.insert("end", f"    Error: {result.stderr}\n")
-                        raise Exception("Git init failed")
+                    self.output_text.insert("end", "Initializing git...\n")
+                    subprocess.run(f'cd "{folder}" && git init', shell=True, capture_output=True, check=True)
                 
-                self.safe_update_ui(self.push_status, text="Configuring user...", text_color=COLORS['accent_orange'])
+                # Config user (OS level already set, but set locally too)
                 self.push_progress.set(0.3)
-                self.output_text.insert("end", "[2] Configuring user...\n")
-                
                 subprocess.run(f'cd "{folder}" && git config user.name "{self.name}"', shell=True, capture_output=True)
                 subprocess.run(f'cd "{folder}" && git config user.email "{self.email}"', shell=True, capture_output=True)
-                self.output_text.insert("end", f"    User: {self.name} <{self.email}>\n")
                 
-                self.safe_update_ui(self.push_status, text="Adding remote...", text_color=COLORS['accent_orange'])
+                # Add remote
                 self.push_progress.set(0.4)
-                self.output_text.insert("end", "[3] Adding remote...\n")
-                
+                self.output_text.insert("end", "Adding remote...\n")
                 subprocess.run(f'cd "{folder}" && git remote remove origin', shell=True, capture_output=True)
-                result = subprocess.run(f'cd "{folder}" && git remote add origin {repo_url}', shell=True, capture_output=True, text=True)
-                if result.returncode == 0:
-                    self.output_text.insert("end", f"    Remote added: {repo_url}\n")
-                else:
-                    self.output_text.insert("end", f"    Error: {result.stderr}\n")
-                    raise Exception("Remote add failed")
+                subprocess.run(f'cd "{folder}" && git remote add origin {repo_url}', shell=True, capture_output=True, check=True)
                 
-                self.safe_update_ui(self.push_status, text="Adding files...", text_color=COLORS['accent_orange'])
+                # Add files
                 self.push_progress.set(0.5)
-                self.output_text.insert("end", "[4] Adding files...\n")
+                self.output_text.insert("end", "Adding files...\n")
+                subprocess.run(f'cd "{folder}" && git add .', shell=True, capture_output=True, check=True)
                 
-                result = subprocess.run(f'cd "{folder}" && git add .', shell=True, capture_output=True, text=True)
-                if result.returncode == 0:
-                    self.output_text.insert("end", "    Files added\n")
-                else:
-                    self.output_text.insert("end", f"    Error: {result.stderr}\n")
-                    raise Exception("Git add failed")
-                
-                self.safe_update_ui(self.push_status, text="Committing...", text_color=COLORS['accent_orange'])
+                # Commit
                 self.push_progress.set(0.6)
-                self.output_text.insert("end", "[5] Creating commit...\n")
+                self.output_text.insert("end", "Committing...\n")
+                subprocess.run(f'cd "{folder}" && git commit -m "Initial commit"', shell=True, capture_output=True)
                 
-                result = subprocess.run(f'cd "{folder}" && git commit -m "Initial commit"', shell=True, capture_output=True, text=True)
-                if result.returncode == 0:
-                    self.output_text.insert("end", "    Commit created\n")
-                else:
-                    self.output_text.insert("end", f"    Note: {result.stderr}\n")
-                
-                self.safe_update_ui(self.push_status, text="Pushing to GitHub...", text_color=COLORS['accent_orange'])
+                # Push
                 self.push_progress.set(0.7)
-                self.output_text.insert("end", "[6] Pushing to GitHub...\n")
+                self.output_text.insert("end", "Pushing...\n")
                 
                 env = os.environ.copy()
                 env['GIT_ASKPASS'] = 'echo'
-                env['GIT_AUTHOR_NAME'] = self.name
-                env['GIT_AUTHOR_EMAIL'] = self.email
-                env['GIT_COMMITTER_NAME'] = self.name
-                env['GIT_COMMITTER_EMAIL'] = self.email
+                
+                push_cmd = "git push -u origin main"
+                if self.force_push.get():
+                    push_cmd = "git push -u origin main --force"
+                elif self.accept_push.get():
+                    push_cmd = "git push -u origin main --force-with-lease"
                 
                 if 'https://' in repo_url and git_token:
                     repo_url_with_token = repo_url.replace('https://', f'https://{git_token}@')
-                    push_cmd = "git push -u origin main"
-                    if self.force_push.get():
-                        push_cmd = "git push -u origin main --force"
-                    elif self.accept_push.get():
-                        push_cmd = "git push -u origin main --force-with-lease"
-                    
                     cmd = f'cd "{folder}" && git remote set-url origin {repo_url_with_token} && {push_cmd}'
-                    self.output_text.insert("end", "    Using HTTPS with token\n")
                 else:
-                    push_cmd = "git push -u origin main"
-                    if self.force_push.get():
-                        push_cmd = "git push -u origin main --force"
-                        self.output_text.insert("end", "    Using --force\n")
-                    elif self.accept_push.get():
-                        push_cmd = "git push -u origin main --force-with-lease"
-                        self.output_text.insert("end", "    Using --force-with-lease\n")
-                    else:
-                        self.output_text.insert("end", "    Using normal push (SSH)\n")
-                    
                     cmd = f'cd "{folder}" && {push_cmd}'
-                
-                self.output_text.insert("end", f"    Command: {push_cmd}\n")
                 
                 result = subprocess.run(
                     cmd,
@@ -1103,33 +874,28 @@ class GitPushWindow(ctk.CTkToplevel):
                 self.push_progress.set(0.9)
                 
                 if result.returncode == 0:
-                    self.safe_update_ui(self.push_status, text="Push completed successfully!", text_color=COLORS['accent_green'])
+                    self.safe_update_ui(self.push_status, text="Push successful!", text_color=COLORS['accent_green'])
                     self.push_progress.set(1.0)
-                    self.output_text.insert("end", "\n" + "=" * 40 + "\n")
-                    self.output_text.insert("end", "SUCCESS: Push completed successfully!\n")
-                    if result.stdout:
-                        self.output_text.insert("end", result.stdout)
+                    self.output_text.insert("end", "\nSUCCESS: Push completed!\n")
                     messagebox.showinfo("Success", "Git Push completed successfully!")
                 else:
                     self.safe_update_ui(self.push_status, text="Push failed", text_color=COLORS['accent_red'])
                     self.push_progress.set(0)
-                    self.output_text.insert("end", "\n" + "=" * 40 + "\n")
-                    self.output_text.insert("end", "ERROR: Push failed!\n")
-                    self.output_text.insert("end", result.stderr)
+                    self.output_text.insert("end", f"\nERROR: {result.stderr}\n")
                     messagebox.showerror("Push Failed", f"Push failed:\n{result.stderr[:200]}")
                 
                 self.push_btn.configure(state="normal", text="Push Now")
                 self.output_text.configure(state="disabled")
                 
             except subprocess.TimeoutExpired:
-                self.safe_update_ui(self.push_status, text="Push timed out", text_color=COLORS['accent_red'])
+                self.safe_update_ui(self.push_status, text="Timed out", text_color=COLORS['accent_red'])
                 self.push_btn.configure(state="normal", text="Push Now")
                 self.output_text.insert("end", "\nERROR: Push timed out\n")
                 self.output_text.configure(state="disabled")
                 messagebox.showerror("Push Failed", "Push timed out")
                 
             except Exception as e:
-                self.safe_update_ui(self.push_status, text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
+                self.safe_update_ui(self.push_status, text=f"Error: {str(e)[:40]}", text_color=COLORS['accent_red'])
                 self.push_btn.configure(state="normal", text="Push Now")
                 self.output_text.insert("end", f"\nERROR: {str(e)}\n")
                 self.output_text.configure(state="disabled")
@@ -1140,21 +906,20 @@ class GitPushWindow(ctk.CTkToplevel):
         thread.start()
 
 class App(ctk.CTk):
+    """Main App - Optimized for speed"""
     def __init__(self):
         super().__init__()
         
         self.title("Git & Download Panel Pro")
-        self.geometry("900x750")
+        self.geometry("900x700")
         self.resizable(False, False)
         self.configure(fg_color=COLORS['bg_primary'])
         
         # Variables
-        self.current_status = "Ready"
         self.animation_running = False
         self.update_available = False
         self.update_version = ""
         self.update_commit_message = ""
-        self.update_ready = False
         self.original_bg_image = None
         self.git_setup_window = None
         self.git_push_window = None
@@ -1165,392 +930,297 @@ class App(ctk.CTk):
         self.main_container = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
         self.main_container.pack(fill="both", expand=True)
         
-        # --- HEADER ---
-        self.header_frame = ctk.CTkFrame(self.main_container, fg_color="transparent", height=60)
-        self.header_frame.pack(fill="x", pady=(15, 0), padx=20)
+        # --- HEADER - Simplified ---
+        self.header_frame = ctk.CTkFrame(self.main_container, fg_color="transparent", height=50)
+        self.header_frame.pack(fill="x", pady=(10, 0), padx=15)
         
-        self.app_icon = ctk.CTkLabel(self.header_frame, text="", width=12, height=12, corner_radius=6, fg_color=COLORS['accent_blue'])
-        self.app_icon.pack(side="left", padx=(0, 10))
+        self.app_icon = ctk.CTkLabel(self.header_frame, text="", width=10, height=10, corner_radius=5, fg_color=COLORS['accent_blue'])
+        self.app_icon.pack(side="left", padx=(0, 8))
         
         self.title_text = ctk.CTkLabel(
             self.header_frame,
-            text="Git & Download Panel Pro",
-            font=ctk.CTkFont(family="Roboto", size=20, weight="bold"),
+            text="Git & Download Panel",
+            font=ctk.CTkFont(family="Roboto", size=18, weight="bold"),
             text_color=COLORS['text_primary']
         )
-        self.title_text.pack(side="left", expand=True)
+        self.title_text.pack(side="left")
         
-        # Settings button
-        self.settings_btn = ctk.CTkButton(
+        # OS badge
+        os_badge = ctk.CTkLabel(
             self.header_frame,
-            text="Settings",
-            width=80,
-            height=36,
-            corner_radius=10,
-            fg_color="transparent",
-            hover_color=COLORS['bg_secondary'],
-            text_color=COLORS['text_secondary'],
-            font=ctk.CTkFont(size=12, weight="bold"),
-            command=self.toggle_settings
-        )
-        self.settings_btn.pack(side="right", padx=(0, 8))
-        
-        self.close_btn = ctk.CTkButton(
-            self.header_frame,
-            text="X",
-            width=30,
-            height=30,
-            corner_radius=8,
-            fg_color="transparent",
-            hover_color=COLORS['bg_secondary'],
-            text_color=COLORS['text_secondary'],
-            font=ctk.CTkFont(size=14, weight="bold"),
-            command=self.quit
-        )
-        self.close_btn.pack(side="right", padx=(0, 0))
-        
-        self.version_badge = ctk.CTkLabel(
-            self.header_frame,
-            text="v2.0",
-            font=ctk.CTkFont(family="Roboto", size=10, weight="normal"),
+            text=OS_TYPE.upper(),
+            font=ctk.CTkFont(family="Roboto", size=9, weight="bold"),
             text_color=COLORS['text_secondary'],
             fg_color=COLORS['bg_secondary'],
             corner_radius=8,
             padx=8,
             pady=2
         )
-        self.version_badge.pack(side="right", padx=(0, 10))
+        os_badge.pack(side="right", padx=(0, 5))
+        
+        self.version_badge = ctk.CTkLabel(
+            self.header_frame,
+            text="v2.0",
+            font=ctk.CTkFont(family="Roboto", size=9, weight="normal"),
+            text_color=COLORS['text_secondary'],
+            fg_color=COLORS['bg_secondary'],
+            corner_radius=8,
+            padx=8,
+            pady=2
+        )
+        self.version_badge.pack(side="right", padx=(0, 5))
+        
+        # Settings button
+        self.settings_btn = ctk.CTkButton(
+            self.header_frame,
+            text="[S]",
+            width=30,
+            height=28,
+            corner_radius=8,
+            fg_color="transparent",
+            hover_color=COLORS['bg_secondary'],
+            text_color=COLORS['text_secondary'],
+            font=ctk.CTkFont(size=11, weight="bold"),
+            command=self.toggle_settings
+        )
+        self.settings_btn.pack(side="right", padx=(0, 5))
+        
+        self.close_btn = ctk.CTkButton(
+            self.header_frame,
+            text="X",
+            width=28,
+            height=28,
+            corner_radius=8,
+            fg_color="transparent",
+            hover_color=COLORS['bg_secondary'],
+            text_color=COLORS['text_secondary'],
+            font=ctk.CTkFont(size=12, weight="bold"),
+            command=self.quit
+        )
+        self.close_btn.pack(side="right")
         
         # --- SETTINGS PANEL ---
         self.settings_frame = ctk.CTkFrame(
             self.main_container,
             fg_color=COLORS['bg_secondary'],
-            corner_radius=20,
+            corner_radius=15,
             border_width=1,
             border_color=COLORS['border_light']
         )
-        self.settings_frame.pack(fill="x", padx=30, pady=(0, 15))
+        self.settings_frame.pack(fill="x", padx=25, pady=(0, 10))
         self.settings_frame.pack_forget()
         
         # Settings header
         settings_header = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
-        settings_header.pack(fill="x", pady=(20, 10), padx=25)
+        settings_header.pack(fill="x", pady=(12, 5), padx=18)
         
         ctk.CTkLabel(
             settings_header,
             text="Settings",
-            font=ctk.CTkFont(family="Roboto", size=22, weight="bold"),
+            font=ctk.CTkFont(family="Roboto", size=16, weight="bold"),
             text_color=COLORS['text_primary']
         ).pack(side="left")
         
         ctk.CTkButton(
             settings_header,
             text="X",
-            width=30,
-            height=30,
-            corner_radius=8,
+            width=25,
+            height=25,
+            corner_radius=6,
             fg_color="transparent",
             hover_color=COLORS['bg_primary'],
             text_color=COLORS['text_secondary'],
-            font=ctk.CTkFont(size=16, weight="bold"),
+            font=ctk.CTkFont(size=12, weight="bold"),
             command=self.toggle_settings
         ).pack(side="right")
         
-        # Separator
-        ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=25, pady=5)
+        ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=18, pady=5)
         
-        # --- UPDATE SECTION ---
+        # Update section - Simplified
         update_section = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
-        update_section.pack(fill="x", padx=25, pady=15)
-        
-        update_header = ctk.CTkFrame(update_section, fg_color="transparent")
-        update_header.pack(fill="x", pady=(0, 10))
+        update_section.pack(fill="x", padx=18, pady=8)
         
         ctk.CTkLabel(
-            update_header,
-            text="Update Application",
-            font=ctk.CTkFont(family="Roboto", size=17, weight="bold"),
-            text_color=COLORS['text_primary']
-        ).pack(side="left")
-        
-        # Update status card
-        status_card = ctk.CTkFrame(update_section, fg_color=COLORS['bg_primary'], corner_radius=14)
-        status_card.pack(fill="x", pady=5)
-        
-        status_row = ctk.CTkFrame(status_card, fg_color="transparent")
-        status_row.pack(fill="x", padx=18, pady=12)
-        
-        self.update_status_icon = ctk.CTkLabel(
-            status_row,
-            text="[i]",
+            update_section,
+            text="Update",
             font=ctk.CTkFont(family="Roboto", size=14, weight="bold"),
-            text_color=COLORS['accent_orange']
-        )
-        self.update_status_icon.pack(side="left", padx=(0, 12))
+            text_color=COLORS['text_primary']
+        ).pack(anchor="w", pady=(0, 3))
         
-        status_text_frame = ctk.CTkFrame(status_row, fg_color="transparent")
-        status_text_frame.pack(side="left", fill="x", expand=True)
-        
-        self.update_status_title = ctk.CTkLabel(
-            status_text_frame,
+        self.update_status_label = ctk.CTkLabel(
+            update_section,
             text="Checking for updates...",
-            font=ctk.CTkFont(family="Roboto", size=14, weight="bold"),
-            text_color=COLORS['text_primary']
-        )
-        self.update_status_title.pack(anchor="w")
-        
-        self.update_status_desc = ctk.CTkLabel(
-            status_text_frame,
-            text="Please wait while we check for the latest version",
-            font=ctk.CTkFont(family="Roboto", size=12),
+            font=ctk.CTkFont(family="Roboto", size=11),
             text_color=COLORS['text_secondary']
         )
-        self.update_status_desc.pack(anchor="w")
+        self.update_status_label.pack(anchor="w")
         
-        # Commit message card
-        self.commit_card = ctk.CTkFrame(status_card, fg_color=COLORS['bg_secondary'], corner_radius=10)
-        self.commit_card.pack(fill="x", padx=18, pady=(0, 10))
-        self.commit_card.pack_forget()
-        
-        commit_header = ctk.CTkFrame(self.commit_card, fg_color="transparent")
-        commit_header.pack(fill="x", padx=12, pady=8)
-        
-        ctk.CTkLabel(
-            commit_header,
-            text="[Message]",
-            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
-            text_color=COLORS['text_secondary']
-        ).pack(side="left", padx=(0, 8))
-        
-        ctk.CTkLabel(
-            commit_header,
-            text="Update Reason",
-            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
-            text_color=COLORS['text_secondary']
-        ).pack(side="left")
-        
-        self.commit_message_label = ctk.CTkLabel(
-            self.commit_card,
-            text="",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_primary'],
-            wraplength=400
-        )
-        self.commit_message_label.pack(anchor="w", padx=18, pady=(0, 8))
-        
-        # Progress bar
         self.update_progress = ctk.CTkProgressBar(
             update_section,
-            height=8,
-            corner_radius=4,
+            height=4,
+            corner_radius=2,
             progress_color=COLORS['accent_blue'],
             fg_color=COLORS['border_light']
         )
-        self.update_progress.pack(pady=(10, 15), fill="x")
+        self.update_progress.pack(fill="x", pady=(5, 5))
         self.update_progress.set(0)
         
-        # Restart button
         self.restart_btn = ctk.CTkButton(
             update_section,
             text="Restart & Update",
-            height=48,
-            corner_radius=14,
+            height=32,
+            corner_radius=8,
             fg_color=COLORS['accent_green'],
             hover_color='#2a9d4d',
-            font=ctk.CTkFont(family="Roboto", size=15, weight="bold"),
+            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
             command=self.restart_app
         )
-        self.restart_btn.pack(fill="x", pady=5)
+        self.restart_btn.pack(fill="x", pady=3)
         self.restart_btn.configure(state="disabled")
         
-        # Separator
-        ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=25, pady=5)
+        ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=18, pady=5)
         
-        # --- ABOUT SECTION ---
+        # About section - Simplified
         about_section = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
-        about_section.pack(fill="x", padx=25, pady=15)
-        
-        about_header = ctk.CTkFrame(about_section, fg_color="transparent")
-        about_header.pack(fill="x", pady=(0, 10))
+        about_section.pack(fill="x", padx=18, pady=8)
         
         ctk.CTkLabel(
-            about_header,
+            about_section,
             text="About",
-            font=ctk.CTkFont(family="Roboto", size=17, weight="bold"),
+            font=ctk.CTkFont(family="Roboto", size=14, weight="bold"),
             text_color=COLORS['text_primary']
-        ).pack(side="left")
-        
-        about_card = ctk.CTkFrame(about_section, fg_color=COLORS['bg_primary'], corner_radius=14)
-        about_card.pack(fill="x", pady=5)
-        
-        about_content = ctk.CTkFrame(about_card, fg_color="transparent")
-        about_content.pack(fill="x", padx=18, pady=12)
+        ).pack(anchor="w", pady=(0, 3))
         
         ctk.CTkLabel(
-            about_content,
-            text="Git & Download Panel Pro",
-            font=ctk.CTkFont(family="Roboto", size=15, weight="bold"),
-            text_color=COLORS['text_primary']
-        ).pack(anchor="w")
-        
-        ctk.CTkLabel(
-            about_content,
-            text="Version 2.0.0",
-            font=ctk.CTkFont(family="Roboto", size=12),
+            about_section,
+            text="Git & Download Panel Pro v2.0",
+            font=ctk.CTkFont(family="Roboto", size=11),
             text_color=COLORS['text_secondary']
         ).pack(anchor="w")
         
-        ctk.CTkFrame(about_content, height=1, fg_color=COLORS['border_light']).pack(fill="x", pady=8)
-        
-        # Developer
-        dev_frame = ctk.CTkFrame(about_content, fg_color="transparent")
-        dev_frame.pack(fill="x", pady=3)
-        
         ctk.CTkLabel(
-            dev_frame,
+            about_section,
             text="Developer: Niyibizi Kevin",
-            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Roboto", size=11, weight="bold"),
             text_color=COLORS['accent_blue']
         ).pack(anchor="w")
         
-        # Website
-        website_frame = ctk.CTkFrame(about_content, fg_color="transparent")
-        website_frame.pack(fill="x", pady=3)
-        
         website_link = ctk.CTkLabel(
-            website_frame,
+            about_section,
             text="niyibizi_kevin.netlify.app",
-            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Roboto", size=10),
             text_color=COLORS['accent_blue'],
             cursor="hand2"
         )
-        website_link.pack(side="left")
+        website_link.pack(anchor="w")
         website_link.bind("<Button-1>", lambda e: self.open_website())
         
-        # Year
-        year_frame = ctk.CTkFrame(about_content, fg_color="transparent")
-        year_frame.pack(fill="x", pady=3)
-        
-        ctk.CTkLabel(
-            year_frame,
-            text="2024",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
-        ).pack(anchor="w")
-        
-        # --- BACKGROUND IMAGE ---
+        # --- BACKGROUND ---
         self.bg_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        self.bg_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        self.bg_frame.pack(fill="both", expand=True, padx=15, pady=(0, 10))
         
         self.bg_image_label = ctk.CTkLabel(self.bg_frame, text="")
         self.bg_image_label.place(x=0, y=0, relwidth=1, relheight=1)
         
-        # Load background
+        # Load background - only if exists
         bg_loaded = False
         try:
             if os.path.exists("app.jpeg"):
-                self.original_bg_image = Image.open("app.jpeg").resize((860, 700), Image.Resampling.LANCZOS)
-                self.bg_photo = ctk.CTkImage(light_image=self.original_bg_image, dark_image=self.original_bg_image, size=(860, 700))
+                self.original_bg_image = Image.open("app.jpeg").resize((870, 650), Image.Resampling.LANCZOS)
+                self.bg_photo = ctk.CTkImage(light_image=self.original_bg_image, dark_image=self.original_bg_image, size=(870, 650))
                 self.bg_image_label.configure(image=self.bg_photo)
                 bg_loaded = True
         except:
             pass
         
         if not bg_loaded:
-            self.original_bg_image = Image.new("RGB", (860, 700), color=COLORS['bg_primary'])
             self.bg_frame.configure(fg_color=COLORS['bg_primary'])
         
         def make_blur_crop(box):
-            if self.original_bg_image is None:
+            if not bg_loaded or self.original_bg_image is None:
                 return None
             try:
                 crop = self.original_bg_image.crop(box)
-                blurred = crop.filter(ImageFilter.GaussianBlur(25))
+                blurred = crop.filter(ImageFilter.GaussianBlur(20))
                 enhancer = ImageEnhance.Brightness(blurred)
-                darkened = enhancer.enhance(0.4)
+                darkened = enhancer.enhance(0.5)
                 return ctk.CTkImage(light_image=darkened, dark_image=darkened, size=(box[2]-box[0], box[3]-box[1]))
             except:
                 return None
         
         # --- CARDS ---
         # Git Push Card
-        self.git_blur_img = make_blur_crop((170, 180, 430, 580))
-        self.git_card = ctk.CTkFrame(self.bg_frame, corner_radius=20, border_width=1, border_color=COLORS['border_light'], fg_color=COLORS['bg_secondary'])
-        self.git_card.place(relx=0.35, rely=0.5, anchor="center", relwidth=0.28, relheight=0.55)
+        self.git_blur_img = make_blur_crop((180, 180, 420, 560))
+        self.git_card = ctk.CTkFrame(self.bg_frame, corner_radius=18, border_width=1, border_color=COLORS['border_light'], fg_color=COLORS['bg_secondary'])
+        self.git_card.place(relx=0.33, rely=0.5, anchor="center", relwidth=0.28, relheight=0.50)
         
-        ctk.CTkFrame(self.git_card, fg_color=COLORS['bg_secondary'], corner_radius=20).place(x=0, y=0, relwidth=1, relheight=1)
+        ctk.CTkFrame(self.git_card, fg_color=COLORS['bg_secondary'], corner_radius=18).place(x=0, y=0, relwidth=1, relheight=1)
         
+        # Git icon
         try:
             if os.path.exists("image_0.png"):
                 git_pil = Image.open("image_0.png")
-                self.git_photo = ctk.CTkImage(light_image=git_pil, dark_image=git_pil, size=(80, 80))
+                git_photo = ctk.CTkImage(light_image=git_pil, dark_image=git_pil, size=(60, 60))
             else:
-                self.git_photo = None
+                git_photo = None
         except:
-            self.git_photo = None
+            git_photo = None
         
-        self.git_content = ctk.CTkFrame(self.git_card, fg_color="transparent")
-        self.git_content.place(relx=0.5, rely=0.5, anchor="center")
+        git_content = ctk.CTkFrame(self.git_card, fg_color="transparent")
+        git_content.place(relx=0.5, rely=0.5, anchor="center")
         
-        if self.git_photo:
-            ctk.CTkLabel(self.git_content, image=self.git_photo, text="").pack(pady=(0, 15))
-        ctk.CTkLabel(self.git_content, text="Git Push", font=ctk.CTkFont(family="Roboto", size=18, weight="bold"), text_color=COLORS['text_primary']).pack(pady=(0, 5))
-        ctk.CTkLabel(self.git_content, text="Push changes to remote", font=ctk.CTkFont(family="Roboto", size=12), text_color=COLORS['text_secondary']).pack(pady=(0, 20))
-        SmoothButton(self.git_content, text="Execute Push", width=160, height=40, command=self.start_git_setup).pack(pady=(0, 15))
-        self.git_progress = ctk.CTkProgressBar(self.git_content, width=160, height=4, corner_radius=2, progress_color=COLORS['accent_blue'], fg_color=COLORS['border_light'])
-        self.git_progress.pack()
-        self.git_progress.set(0)
+        if git_photo:
+            ctk.CTkLabel(git_content, image=git_photo, text="").pack(pady=(0, 10))
+        ctk.CTkLabel(git_content, text="Git Push", font=ctk.CTkFont(family="Roboto", size=16, weight="bold"), text_color=COLORS['text_primary']).pack(pady=(0, 3))
+        ctk.CTkLabel(git_content, text="Push to remote", font=ctk.CTkFont(family="Roboto", size=11), text_color=COLORS['text_secondary']).pack(pady=(0, 15))
+        SmoothButton(git_content, text="Execute Push", width=140, height=36, command=self.start_git_setup).pack(pady=(0, 10))
         
         # Clone Card
-        self.clone_blur_img = make_blur_crop((430, 180, 690, 580))
-        self.clone_card = ctk.CTkFrame(self.bg_frame, corner_radius=20, border_width=1, border_color=COLORS['border_light'], fg_color=COLORS['bg_secondary'])
-        self.clone_card.place(relx=0.65, rely=0.5, anchor="center", relwidth=0.28, relheight=0.55)
+        self.clone_blur_img = make_blur_crop((440, 180, 680, 560))
+        self.clone_card = ctk.CTkFrame(self.bg_frame, corner_radius=18, border_width=1, border_color=COLORS['border_light'], fg_color=COLORS['bg_secondary'])
+        self.clone_card.place(relx=0.67, rely=0.5, anchor="center", relwidth=0.28, relheight=0.50)
         
-        ctk.CTkFrame(self.clone_card, fg_color=COLORS['bg_secondary'], corner_radius=20).place(x=0, y=0, relwidth=1, relheight=1)
+        ctk.CTkFrame(self.clone_card, fg_color=COLORS['bg_secondary'], corner_radius=18).place(x=0, y=0, relwidth=1, relheight=1)
         
         # Clone icon
         try:
             if os.path.exists("download.png"):
                 clone_pil = Image.open("download.png")
-                self.clone_photo = ctk.CTkImage(light_image=clone_pil, dark_image=clone_pil, size=(80, 80))
+                clone_photo = ctk.CTkImage(light_image=clone_pil, dark_image=clone_pil, size=(60, 60))
             else:
-                self.clone_photo = None
+                clone_photo = None
         except:
-            self.clone_photo = None
+            clone_photo = None
         
-        self.clone_content = ctk.CTkFrame(self.clone_card, fg_color="transparent")
-        self.clone_content.place(relx=0.5, rely=0.5, anchor="center")
+        clone_content = ctk.CTkFrame(self.clone_card, fg_color="transparent")
+        clone_content.place(relx=0.5, rely=0.5, anchor="center")
         
-        if self.clone_photo:
-            ctk.CTkLabel(self.clone_content, image=self.clone_photo, text="").pack(pady=(0, 15))
+        if clone_photo:
+            ctk.CTkLabel(clone_content, image=clone_photo, text="").pack(pady=(0, 10))
         else:
-            # Text icon if no image
-            ctk.CTkLabel(self.clone_content, text="[Clone]", font=ctk.CTkFont(family="Roboto", size=30, weight="bold"), text_color=COLORS['accent_blue']).pack(pady=(0, 15))
+            ctk.CTkLabel(clone_content, text="[Clone]", font=ctk.CTkFont(family="Roboto", size=24, weight="bold"), text_color=COLORS['accent_blue']).pack(pady=(0, 10))
         
-        ctk.CTkLabel(self.clone_content, text="Clone Repository", font=ctk.CTkFont(family="Roboto", size=18, weight="bold"), text_color=COLORS['text_primary']).pack(pady=(0, 5))
-        ctk.CTkLabel(self.clone_content, text="Clone a Git repository", font=ctk.CTkFont(family="Roboto", size=12), text_color=COLORS['text_secondary']).pack(pady=(0, 20))
-        SmoothButton(self.clone_content, text="Open Clone", width=160, height=40, fg_color=COLORS['accent_green'], command=self.start_clone).pack(pady=(0, 15))
-        self.clone_progress = ctk.CTkProgressBar(self.clone_content, width=160, height=4, corner_radius=2, progress_color=COLORS['accent_green'], fg_color=COLORS['border_light'])
-        self.clone_progress.pack()
-        self.clone_progress.set(0)
+        ctk.CTkLabel(clone_content, text="Clone Repository", font=ctk.CTkFont(family="Roboto", size=16, weight="bold"), text_color=COLORS['text_primary']).pack(pady=(0, 3))
+        ctk.CTkLabel(clone_content, text="Clone from remote", font=ctk.CTkFont(family="Roboto", size=11), text_color=COLORS['text_secondary']).pack(pady=(0, 15))
+        SmoothButton(clone_content, text="Open Clone", width=140, height=36, fg_color=COLORS['accent_green'], command=self.start_clone).pack(pady=(0, 10))
         
         # --- STATUS BAR ---
-        self.status_bar = ctk.CTkFrame(self.main_container, fg_color=COLORS['bg_secondary'], height=35, corner_radius=0)
+        self.status_bar = ctk.CTkFrame(self.main_container, fg_color=COLORS['bg_secondary'], height=28, corner_radius=0)
         self.status_bar.pack(fill="x", side="bottom")
         
-        self.status_dot = ctk.CTkLabel(self.status_bar, text="*", font=ctk.CTkFont(family="Roboto", size=10), text_color=COLORS['accent_green'])
-        self.status_dot.pack(side="left", padx=(20, 8))
+        self.status_dot = ctk.CTkLabel(self.status_bar, text="*", font=ctk.CTkFont(family="Roboto", size=8), text_color=COLORS['accent_green'])
+        self.status_dot.pack(side="left", padx=(15, 6))
         
-        self.status_label = ctk.CTkLabel(self.status_bar, text="Ready", font=ctk.CTkFont(family="Roboto", size=12), text_color=COLORS['text_secondary'])
+        self.status_label = ctk.CTkLabel(self.status_bar, text="Ready", font=ctk.CTkFont(family="Roboto", size=10), text_color=COLORS['text_secondary'])
         self.status_label.pack(side="left")
         
         self.shortcuts_label = ctk.CTkLabel(
             self.status_bar,
             text="Ctrl+G: Git | Ctrl+C: Clone | Ctrl+S: Settings",
-            font=ctk.CTkFont(family="Roboto", size=10),
+            font=ctk.CTkFont(family="Roboto", size=9),
             text_color=COLORS['text_secondary']
         )
-        self.shortcuts_label.pack(side="right", padx=20)
+        self.shortcuts_label.pack(side="right", padx=15)
         
         # Shortcuts
         self.bind("<Control-q>", lambda e: self.quit())
@@ -1558,75 +1228,54 @@ class App(ctk.CTk):
         self.bind("<Control-c>", lambda e: self.start_clone())
         self.bind("<Control-s>", lambda e: self.toggle_settings())
         
-        # --- AUTO UPDATE ON START ---
+        # --- AUTO UPDATE ---
         self.after(1500, self.auto_check_update)
     
     def start_clone(self):
-        """Open clone window"""
         if self.clone_window is None or not self.clone_window.winfo_exists():
             self.clone_window = CloneWindow(self)
-            self.status_label.configure(text="Clone window opened")
+            self.status_label.configure(text="Clone opened")
         else:
             self.clone_window.focus()
     
     def start_git_setup(self):
-        # Check if git is installed
         try:
             subprocess.run("git --version", shell=True, capture_output=True, check=True)
         except:
-            messagebox.showerror("Git Not Found", "Git is not installed. Please install Git first.")
+            messagebox.showerror("Git Not Found", "Please install Git first.")
             return
         
-        # Check if already configured
         if self.git_config.is_configured():
             self.show_push_window(self.git_config.get_name(), self.git_config.get_email())
             return
         
-        # Open setup window
         if self.git_setup_window is None or not self.git_setup_window.winfo_exists():
             self.git_setup_window = GitSetupWindow(self)
-            self.status_label.configure(text="Git setup started")
+            self.status_label.configure(text="Git setup")
         else:
             self.git_setup_window.focus()
     
     def show_push_window(self, name, email):
         if self.git_push_window is None or not self.git_push_window.winfo_exists():
             self.git_push_window = GitPushWindow(self, name, email)
-            self.status_label.configure(text="Git push window opened")
+            self.status_label.configure(text="Git push")
         else:
             self.git_push_window.focus()
     
     def open_website(self):
         webbrowser.open("https://niyibizi_kevin.netlify.app")
-        self.status_label.configure(text="Opening developer website...")
+        self.status_label.configure(text="Opening website...")
     
     def toggle_settings(self):
         if self.settings_frame.winfo_ismapped():
             self.settings_frame.pack_forget()
-            self.status_label.configure(text="Settings closed")
-            self.geometry("900x750")
+            self.geometry("900x700")
         else:
-            self.settings_frame.pack(fill="x", padx=30, pady=(0, 15), before=self.bg_frame)
-            self.status_label.configure(text="Settings opened")
-            self.geometry("900x880")
-    
-    def show_commit_message(self, message):
-        self.commit_card.pack(fill="x", padx=18, pady=(0, 10))
-        self.commit_message_label.configure(text=message)
-    
-    def hide_commit_message(self):
-        self.commit_card.pack_forget()
-    
-    def update_ui_status(self, icon, title, desc, progress, color=COLORS['accent_orange']):
-        self.update_status_icon.configure(text=icon, text_color=color)
-        self.update_status_title.configure(text=title)
-        self.update_status_desc.configure(text=desc)
-        self.update_progress.set(progress)
+            self.settings_frame.pack(fill="x", padx=25, pady=(0, 10), before=self.bg_frame)
+            self.geometry("900x760")
     
     def auto_check_update(self):
-        self.update_ui_status("[i]", "Checking for updates...", "Please wait while we check for the latest version", 0.1)
-        self.status_label.configure(text="Checking for updates...")
-        self.hide_commit_message()
+        self.update_status_label.configure(text="Checking for updates...")
         
         def check():
             try:
@@ -1636,20 +1285,13 @@ class App(ctk.CTk):
                     self.update_available = True
                     self.update_version = data['sha'][:7]
                     self.update_commit_message = data['commit']['message']
-                    
-                    self.show_commit_message(self.update_commit_message)
-                    self.update_ui_status("[!]", "Update available!", "Downloading update automatically...", 0.2, COLORS['accent_blue'])
+                    self.update_status_label.configure(text=f"Update: {self.update_commit_message[:40]}...", text_color=COLORS['accent_blue'])
+                    self.restart_btn.configure(state="normal")
                     self.download_update_auto()
                 else:
-                    self.update_ui_status("[OK]", "No updates available", "You are using the latest version", 1.0, COLORS['accent_green'])
-                    self.status_label.configure(text="Ready - Latest version")
-                    self.restart_btn.configure(state="disabled")
-                    self.hide_commit_message()
-                    
-            except Exception as e:
-                self.update_ui_status("[X]", "Could not check updates", "Check your internet connection", 0, COLORS['accent_red'])
-                self.status_label.configure(text="Ready - Update check failed")
-                self.hide_commit_message()
+                    self.update_status_label.configure(text="No updates", text_color=COLORS['accent_green'])
+            except:
+                self.update_status_label.configure(text="Update check failed", text_color=COLORS['accent_red'])
         
         thread = threading.Thread(target=check)
         thread.daemon = True
@@ -1660,26 +1302,17 @@ class App(ctk.CTk):
             try:
                 response = requests.get(GITHUB_ZIP_URL, stream=True, timeout=30)
                 if response.status_code != 200:
-                    raise Exception("Failed to download update")
+                    return
                 
-                self.update_ui_status("[D]", "Downloading update...", "Please wait while we download the latest version", 0.3)
-                
+                self.update_progress.set(0.3)
                 temp_dir = tempfile.mkdtemp()
                 zip_path = os.path.join(temp_dir, "update.zip")
-                
-                total_size = int(response.headers.get('content-length', 0))
-                downloaded = 0
                 
                 with open(zip_path, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
                         f.write(chunk)
-                        downloaded += len(chunk)
-                        if total_size > 0:
-                            progress = 0.3 + (0.4 * (downloaded / total_size))
-                            self.update_progress.set(progress)
                 
-                self.update_ui_status("[E]", "Extracting files...", "Preparing update for installation", 0.7)
-                
+                self.update_progress.set(0.6)
                 with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                     zip_ref.extractall(temp_dir)
                 
@@ -1689,39 +1322,30 @@ class App(ctk.CTk):
                         extracted_dir = os.path.join(temp_dir, item)
                         break
                 
-                if not extracted_dir:
-                    raise Exception("Could not find extracted files")
-                
-                current_dir = os.path.dirname(os.path.abspath(__file__))
-                
-                main_file = os.path.join(extracted_dir, 'main.py')
-                if os.path.exists(main_file):
-                    backup_path = os.path.join(current_dir, 'main_backup.py')
-                    shutil.copy2(os.path.join(current_dir, 'main.py'), backup_path)
-                    shutil.copy2(main_file, os.path.join(current_dir, 'main.py'))
-                    
-                    for file in ['app.jpeg', 'image_0.png', 'download.png']:
-                        src = os.path.join(extracted_dir, file)
-                        if os.path.exists(src):
-                            shutil.copy2(src, os.path.join(current_dir, file))
+                if extracted_dir:
+                    current_dir = os.path.dirname(os.path.abspath(__file__))
+                    main_file = os.path.join(extracted_dir, 'main.py')
+                    if os.path.exists(main_file):
+                        shutil.copy2(main_file, os.path.join(current_dir, 'main.py'))
+                        for file in ['app.jpeg', 'image_0.png', 'download.png']:
+                            src = os.path.join(extracted_dir, file)
+                            if os.path.exists(src):
+                                shutil.copy2(src, os.path.join(current_dir, file))
                 
                 shutil.rmtree(temp_dir)
-                
-                self.update_ui_status("[OK]", "Update ready!", f"Version {self.update_version} is ready to install", 1.0, COLORS['accent_green'])
-                self.status_label.configure(text="Update ready! Restart to apply")
+                self.update_progress.set(1.0)
+                self.update_status_label.configure(text="Update ready! Restart", text_color=COLORS['accent_green'])
                 self.restart_btn.configure(state="normal")
                 
-            except Exception as e:
-                self.update_ui_status("[X]", "Update failed", f"Error: {str(e)[:50]}", 0, COLORS['accent_red'])
-                self.status_label.configure(text="Update failed")
-                self.hide_commit_message()
+            except:
+                self.update_progress.set(0)
         
         thread = threading.Thread(target=download)
         thread.daemon = True
         thread.start()
     
     def restart_app(self):
-        if messagebox.askyesno("Restart", "Restart app to apply update?"):
+        if messagebox.askyesno("Restart", "Restart to apply update?"):
             python = sys.executable
             os.execl(python, python, *sys.argv)
 
