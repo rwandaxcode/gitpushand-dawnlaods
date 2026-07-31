@@ -12,6 +12,7 @@ import threading
 import time
 import subprocess
 import json
+from urllib.parse import urlparse
 
 # --- GIT UPDATE FUNCTIONS ---
 GITHUB_REPO = "rwandaxcode/gitpushand-dawnlaods"
@@ -38,7 +39,6 @@ COLORS = {
 class SmoothButton(ctk.CTkButton):
     """Button isa na macOS/Deepin ihora smooth"""
     def __init__(self, master, **kwargs):
-        # Remove conflicting arguments
         if 'fg_color' in kwargs:
             kwargs.pop('fg_color')
         if 'hover_color' in kwargs:
@@ -73,6 +73,490 @@ class SmoothButton(ctk.CTkButton):
         
     def on_release(self, event):
         self.configure(fg_color=COLORS['accent_blue'])
+
+class DownloadWindow(ctk.CTkToplevel):
+    """Window yo gukurura website, repo, cyangwa YouTube video"""
+    def __init__(self, parent):
+        super().__init__(parent)
+        
+        self.parent = parent
+        self.title("Download")
+        self.geometry("650x600")
+        self.resizable(False, False)
+        self.configure(fg_color=COLORS['bg_secondary'])
+        
+        # Variables
+        self.download_type = "website"  # website, repo, youtube
+        
+        # Header
+        header = ctk.CTkFrame(self, fg_color="transparent")
+        header.pack(fill="x", pady=(20, 10), padx=25)
+        
+        ctk.CTkLabel(
+            header,
+            text="Download",
+            font=ctk.CTkFont(family="Roboto", size=22, weight="bold"),
+            text_color=COLORS['text_primary']
+        ).pack(side="left")
+        
+        ctk.CTkLabel(
+            header,
+            text="Download website, repo or YouTube video",
+            font=ctk.CTkFont(family="Roboto", size=12),
+            text_color=COLORS['text_secondary']
+        ).pack(side="left", padx=(10, 0))
+        
+        # Separator
+        ctk.CTkFrame(self, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=25, pady=10)
+        
+        # Content
+        content = ctk.CTkFrame(self, fg_color="transparent")
+        content.pack(fill="both", expand=True, padx=25, pady=10)
+        
+        # Download type selection
+        type_label = ctk.CTkLabel(
+            content,
+            text="Select download type:",
+            font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
+            text_color=COLORS['text_primary']
+        )
+        type_label.pack(anchor="w", pady=(0, 10))
+        
+        type_frame = ctk.CTkFrame(content, fg_color="transparent")
+        type_frame.pack(fill="x", pady=(0, 15))
+        
+        # Website button
+        self.website_btn = ctk.CTkButton(
+            type_frame,
+            text="Website",
+            width=120,
+            height=35,
+            corner_radius=8,
+            fg_color=COLORS['accent_blue'],
+            hover_color='#0a7eff',
+            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+            command=lambda: self.set_download_type("website")
+        )
+        self.website_btn.pack(side="left", padx=(0, 10))
+        
+        # Repo button
+        self.repo_btn = ctk.CTkButton(
+            type_frame,
+            text="Repository",
+            width=120,
+            height=35,
+            corner_radius=8,
+            fg_color=COLORS['bg_primary'],
+            hover_color=COLORS['bg_primary'],
+            font=ctk.CTkFont(family="Roboto", size=12),
+            command=lambda: self.set_download_type("repo")
+        )
+        self.repo_btn.pack(side="left", padx=(0, 10))
+        
+        # YouTube button
+        self.youtube_btn = ctk.CTkButton(
+            type_frame,
+            text="YouTube Video",
+            width=120,
+            height=35,
+            corner_radius=8,
+            fg_color=COLORS['bg_primary'],
+            hover_color=COLORS['bg_primary'],
+            font=ctk.CTkFont(family="Roboto", size=12),
+            command=lambda: self.set_download_type("youtube")
+        )
+        self.youtube_btn.pack(side="left")
+        
+        # Separator
+        ctk.CTkFrame(content, height=1, fg_color=COLORS['border_light']).pack(fill="x", pady=10)
+        
+        # URL input
+        url_label = ctk.CTkLabel(
+            content,
+            text="URL:",
+            font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
+            text_color=COLORS['text_primary']
+        )
+        url_label.pack(anchor="w", pady=(0, 5))
+        
+        self.url_entry = ctk.CTkEntry(
+            content,
+            height=40,
+            corner_radius=8,
+            fg_color=COLORS['bg_primary'],
+            text_color=COLORS['text_primary'],
+            placeholder_text="https://example.com or https://github.com/user/repo or https://youtube.com/watch?v=xxx"
+        )
+        self.url_entry.pack(fill="x", pady=(0, 15))
+        
+        # Folder selection
+        folder_label = ctk.CTkLabel(
+            content,
+            text="Save to:",
+            font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
+            text_color=COLORS['text_primary']
+        )
+        folder_label.pack(anchor="w", pady=(0, 5))
+        
+        folder_frame = ctk.CTkFrame(content, fg_color="transparent")
+        folder_frame.pack(fill="x", pady=(0, 15))
+        
+        self.folder_entry = ctk.CTkEntry(
+            folder_frame,
+            height=40,
+            corner_radius=8,
+            fg_color=COLORS['bg_primary'],
+            text_color=COLORS['text_primary'],
+            placeholder_text="/path/to/save"
+        )
+        self.folder_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        
+        self.browse_btn = SmoothButton(
+            folder_frame,
+            text="Browse",
+            width=80,
+            height=35,
+            command=self.browse_folder
+        )
+        self.browse_btn.pack(side="right")
+        
+        # Download button
+        self.download_btn = SmoothButton(
+            content,
+            text="Download",
+            height=45,
+            fg_color=COLORS['accent_green'],
+            font=ctk.CTkFont(family="Roboto", size=15, weight="bold"),
+            command=self.execute_download
+        )
+        self.download_btn.pack(fill="x", pady=15)
+        
+        # Progress
+        self.download_progress = ctk.CTkProgressBar(
+            content,
+            height=6,
+            corner_radius=3,
+            progress_color=COLORS['accent_blue'],
+            fg_color=COLORS['border_light']
+        )
+        self.download_progress.pack(fill="x", pady=5)
+        self.download_progress.set(0)
+        
+        # Status
+        self.download_status = ctk.CTkLabel(
+            content,
+            text="Ready to download",
+            font=ctk.CTkFont(family="Roboto", size=12),
+            text_color=COLORS['text_secondary']
+        )
+        self.download_status.pack(anchor="w", pady=5)
+        
+        # Output
+        self.output_text = ctk.CTkTextbox(
+            content,
+            height=120,
+            corner_radius=10,
+            fg_color=COLORS['bg_primary'],
+            text_color=COLORS['text_secondary'],
+            font=ctk.CTkFont(family="Roboto", size=11)
+        )
+        self.output_text.pack(fill="both", pady=5)
+        self.output_text.insert("1.0", "Output will appear here...")
+        self.output_text.configure(state="disabled")
+        
+        # Set default download type
+        self.set_download_type("website")
+    
+    def set_download_type(self, type_name):
+        """Change download type"""
+        self.download_type = type_name
+        
+        # Reset all buttons
+        for btn in [self.website_btn, self.repo_btn, self.youtube_btn]:
+            btn.configure(
+                fg_color=COLORS['bg_primary'],
+                text_color=COLORS['text_secondary'],
+                font=ctk.CTkFont(family="Roboto", size=12)
+            )
+        
+        # Highlight selected
+        if type_name == "website":
+            self.website_btn.configure(fg_color=COLORS['accent_blue'], text_color=COLORS['text_primary'], font=ctk.CTkFont(family="Roboto", size=12, weight="bold"))
+            self.url_entry.configure(placeholder_text="https://example.com")
+            self.download_status.configure(text="Enter website URL to download")
+        elif type_name == "repo":
+            self.repo_btn.configure(fg_color=COLORS['accent_blue'], text_color=COLORS['text_primary'], font=ctk.CTkFont(family="Roboto", size=12, weight="bold"))
+            self.url_entry.configure(placeholder_text="https://github.com/username/repository")
+            self.download_status.configure(text="Enter repository URL to clone")
+        elif type_name == "youtube":
+            self.youtube_btn.configure(fg_color=COLORS['accent_blue'], text_color=COLORS['text_primary'], font=ctk.CTkFont(family="Roboto", size=12, weight="bold"))
+            self.url_entry.configure(placeholder_text="https://youtube.com/watch?v=xxx or https://youtu.be/xxx")
+            self.download_status.configure(text="Enter YouTube video URL to download")
+    
+    def browse_folder(self):
+        """Browse for folder"""
+        folder = filedialog.askdirectory(title="Select save folder")
+        if folder:
+            self.folder_entry.delete(0, "end")
+            self.folder_entry.insert(0, folder)
+    
+    def execute_download(self):
+        """Execute download based on type"""
+        url = self.url_entry.get().strip()
+        folder = self.folder_entry.get().strip()
+        
+        if not url:
+            messagebox.showwarning("Missing URL", "Please enter a URL")
+            return
+        
+        if not folder:
+            messagebox.showwarning("Missing Folder", "Please select save folder")
+            return
+        
+        if not os.path.exists(folder):
+            try:
+                os.makedirs(folder)
+            except:
+                messagebox.showerror("Invalid Folder", "Could not create folder")
+                return
+        
+        self.download_btn.configure(state="disabled", text="Downloading...")
+        self.download_status.configure(text="Starting download...", text_color=COLORS['accent_orange'])
+        self.download_progress.set(0.1)
+        self.output_text.configure(state="normal")
+        self.output_text.delete("1.0", "end")
+        
+        # Start download in thread
+        if self.download_type == "website":
+            thread = threading.Thread(target=self.download_website, args=(url, folder))
+        elif self.download_type == "repo":
+            thread = threading.Thread(target=self.download_repo, args=(url, folder))
+        elif self.download_type == "youtube":
+            thread = threading.Thread(target=self.download_youtube, args=(url, folder))
+        else:
+            thread = threading.Thread(target=self.download_website, args=(url, folder))
+        
+        thread.daemon = True
+        thread.start()
+    
+    def download_website(self, url, folder):
+        """Download website using wget or httrack"""
+        try:
+            self.output_text.insert("end", f"Downloading website: {url}\n")
+            self.output_text.insert("end", f"Save to: {folder}\n\n")
+            self.download_status.configure(text="Downloading website...", text_color=COLORS['accent_orange'])
+            self.download_progress.set(0.2)
+            
+            # Try using wget first
+            try:
+                self.output_text.insert("end", "Using wget to download...\n")
+                cmd = f'wget -r -l 5 -np -k -P "{folder}" "{url}"'
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+                
+                if result.returncode == 0:
+                    self.download_status.configure(text="Website downloaded successfully!", text_color=COLORS['accent_green'])
+                    self.download_progress.set(1.0)
+                    self.output_text.insert("end", "\n--- Download complete! ---\n")
+                    self.output_text.insert("end", f"Website saved to: {folder}\n")
+                    messagebox.showinfo("Success", "Website downloaded successfully!")
+                else:
+                    raise Exception("wget failed")
+                    
+            except:
+                # Fallback to simple download using requests
+                self.output_text.insert("end", "wget not available, using requests...\n")
+                response = requests.get(url, timeout=30)
+                if response.status_code == 200:
+                    # Save HTML
+                    html_file = os.path.join(folder, "index.html")
+                    with open(html_file, 'w', encoding='utf-8') as f:
+                        f.write(response.text)
+                    
+                    self.download_status.configure(text="Website downloaded successfully!", text_color=COLORS['accent_green'])
+                    self.download_progress.set(1.0)
+                    self.output_text.insert("end", "\n--- Download complete! ---\n")
+                    self.output_text.insert("end", f"Website saved to: {html_file}\n")
+                    messagebox.showinfo("Success", "Website downloaded successfully!")
+                else:
+                    raise Exception(f"Failed to download: {response.status_code}")
+            
+        except Exception as e:
+            self.download_status.configure(text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
+            self.download_progress.set(0)
+            self.output_text.insert("end", f"\nError: {str(e)}\n")
+            messagebox.showerror("Download Failed", f"Failed to download website:\n{str(e)}")
+        
+        self.download_btn.configure(state="normal", text="Download")
+        self.output_text.configure(state="disabled")
+    
+    def download_repo(self, url, folder):
+        """Download repository using git clone"""
+        try:
+            self.output_text.insert("end", f"Cloning repository: {url}\n")
+            self.output_text.insert("end", f"Save to: {folder}\n\n")
+            self.download_status.configure(text="Cloning repository...", text_color=COLORS['accent_orange'])
+            self.download_progress.set(0.2)
+            
+            # Check if git is installed
+            try:
+                subprocess.run("git --version", shell=True, capture_output=True, check=True)
+            except:
+                # Fallback to download zip from GitHub
+                self.output_text.insert("end", "Git not found, downloading zip from GitHub...\n")
+                self.download_github_zip(url, folder)
+                return
+            
+            # Extract repo name from URL
+            repo_name = url.rstrip('/').split('/')[-1]
+            if repo_name.endswith('.git'):
+                repo_name = repo_name[:-4]
+            
+            repo_path = os.path.join(folder, repo_name)
+            
+            cmd = f'git clone "{url}" "{repo_path}"'
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                self.download_status.configure(text="Repository cloned successfully!", text_color=COLORS['accent_green'])
+                self.download_progress.set(1.0)
+                self.output_text.insert("end", "\n--- Clone complete! ---\n")
+                self.output_text.insert("end", f"Repository saved to: {repo_path}\n")
+                messagebox.showinfo("Success", "Repository cloned successfully!")
+            else:
+                # Try to download zip as fallback
+                self.output_text.insert("end", "Git clone failed, trying zip download...\n")
+                self.download_github_zip(url, folder)
+            
+        except Exception as e:
+            self.download_status.configure(text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
+            self.download_progress.set(0)
+            self.output_text.insert("end", f"\nError: {str(e)}\n")
+            messagebox.showerror("Download Failed", f"Failed to clone repository:\n{str(e)}")
+        
+        self.download_btn.configure(state="normal", text="Download")
+        self.output_text.configure(state="disabled")
+    
+    def download_github_zip(self, url, folder):
+        """Download GitHub repo as zip"""
+        try:
+            self.output_text.insert("end", "Downloading zip from GitHub...\n")
+            self.download_progress.set(0.3)
+            
+            # Convert github.com URL to zip URL
+            # https://github.com/username/repo -> https://github.com/username/repo/archive/main.zip
+            if 'github.com' in url:
+                parts = url.rstrip('/').split('/')
+                if len(parts) >= 5:
+                    username = parts[-2]
+                    repo = parts[-1]
+                    if repo.endswith('.git'):
+                        repo = repo[:-4]
+                    zip_url = f"https://github.com/{username}/{repo}/archive/main.zip"
+                    
+                    self.output_text.insert("end", f"Downloading: {zip_url}\n")
+                    
+                    response = requests.get(zip_url, stream=True, timeout=60)
+                    if response.status_code == 200:
+                        total_size = int(response.headers.get('content-length', 0))
+                        downloaded = 0
+                        
+                        # Save zip
+                        zip_path = os.path.join(folder, f"{repo}.zip")
+                        with open(zip_path, 'wb') as f:
+                            for chunk in response.iter_content(chunk_size=8192):
+                                f.write(chunk)
+                                downloaded += len(chunk)
+                                if total_size > 0:
+                                    progress = 0.3 + (0.5 * (downloaded / total_size))
+                                    self.download_progress.set(progress)
+                        
+                        # Extract zip
+                        self.output_text.insert("end", "Extracting files...\n")
+                        self.download_progress.set(0.8)
+                        
+                        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                            zip_ref.extractall(folder)
+                        
+                        os.remove(zip_path)
+                        
+                        self.download_status.configure(text="Repository downloaded successfully!", text_color=COLORS['accent_green'])
+                        self.download_progress.set(1.0)
+                        self.output_text.insert("end", "\n--- Download complete! ---\n")
+                        self.output_text.insert("end", f"Repository saved to: {folder}\n")
+                        messagebox.showinfo("Success", "Repository downloaded successfully!")
+                    else:
+                        raise Exception(f"Failed to download: {response.status_code}")
+                else:
+                    raise Exception("Invalid GitHub URL")
+            else:
+                raise Exception("Not a GitHub URL")
+                
+        except Exception as e:
+            self.download_status.configure(text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
+            self.download_progress.set(0)
+            self.output_text.insert("end", f"\nError: {str(e)}\n")
+            messagebox.showerror("Download Failed", f"Failed to download repository:\n{str(e)}")
+            raise
+    
+    def download_youtube(self, url, folder):
+        """Download YouTube video"""
+        try:
+            self.output_text.insert("end", f"Downloading YouTube video: {url}\n")
+            self.output_text.insert("end", f"Save to: {folder}\n\n")
+            self.download_status.configure(text="Downloading YouTube video...", text_color=COLORS['accent_orange'])
+            self.download_progress.set(0.1)
+            
+            # Try using yt-dlp (recommended)
+            try:
+                self.output_text.insert("end", "Using yt-dlp to download...\n")
+                
+                # Check if yt-dlp is installed
+                try:
+                    subprocess.run("yt-dlp --version", shell=True, capture_output=True, check=True)
+                except:
+                    self.output_text.insert("end", "yt-dlp not found, trying youtube-dl...\n")
+                    try:
+                        subprocess.run("youtube-dl --version", shell=True, capture_output=True, check=True)
+                        downloader = "youtube-dl"
+                    except:
+                        raise Exception("Neither yt-dlp nor youtube-dl found. Please install: pip install yt-dlp")
+                else:
+                    downloader = "yt-dlp"
+                
+                self.output_text.insert("end", f"Using {downloader}\n")
+                
+                # Download video
+                cmd = f'{downloader} -f bestvideo+bestaudio --merge-output-format mp4 -o "{folder}/%(title)s.%(ext)s" "{url}"'
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=600)
+                
+                if result.returncode == 0:
+                    self.download_status.configure(text="YouTube video downloaded successfully!", text_color=COLORS['accent_green'])
+                    self.download_progress.set(1.0)
+                    self.output_text.insert("end", "\n--- Download complete! ---\n")
+                    self.output_text.insert("end", f"Video saved to: {folder}\n")
+                    messagebox.showinfo("Success", "YouTube video downloaded successfully!")
+                else:
+                    self.output_text.insert("end", f"Error: {result.stderr}\n")
+                    raise Exception(f"{downloader} failed")
+                    
+            except Exception as e:
+                # Fallback: Show instructions
+                self.output_text.insert("end", f"\nError: {str(e)}\n")
+                self.output_text.insert("end", "\nPlease install yt-dlp:\n")
+                self.output_text.insert("end", "  pip install yt-dlp\n\n")
+                self.output_text.insert("end", "Or use an online YouTube downloader.\n")
+                self.download_status.configure(text="yt-dlp not installed", text_color=COLORS['accent_red'])
+                self.download_progress.set(0)
+                messagebox.showerror("Download Failed", f"Failed to download YouTube video:\n{str(e)}\n\nPlease install: pip install yt-dlp")
+            
+        except Exception as e:
+            self.download_status.configure(text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
+            self.download_progress.set(0)
+            self.output_text.insert("end", f"\nError: {str(e)}\n")
+            messagebox.showerror("Download Failed", f"Failed to download YouTube video:\n{str(e)}")
+        
+        self.download_btn.configure(state="normal", text="Download")
+        self.output_text.configure(state="disabled")
 
 class GitSetupWindow(ctk.CTkToplevel):
     """Window yo gushiraho Git name, email na SSH key"""
@@ -743,6 +1227,7 @@ class App(ctk.CTk):
         self.original_bg_image = None
         self.git_setup_window = None
         self.git_push_window = None
+        self.download_window = None
         
         # Main container
         self.main_container = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
@@ -932,7 +1417,7 @@ class App(ctk.CTk):
         self.update_progress.pack(pady=(10, 15), fill="x")
         self.update_progress.set(0)
         
-        # Restart button - using CTkButton directly to avoid conflict
+        # Restart button
         self.restart_btn = ctk.CTkButton(
             update_section,
             text="Restart & Update",
@@ -1106,8 +1591,8 @@ class App(ctk.CTk):
         if self.download_photo:
             ctk.CTkLabel(self.download_content, image=self.download_photo, text="").pack(pady=(0, 15))
         ctk.CTkLabel(self.download_content, text="Download", font=ctk.CTkFont(family="Roboto", size=18, weight="bold"), text_color=COLORS['text_primary']).pack(pady=(0, 5))
-        ctk.CTkLabel(self.download_content, text="Download website or repository", font=ctk.CTkFont(family="Roboto", size=12), text_color=COLORS['text_secondary']).pack(pady=(0, 20))
-        SmoothButton(self.download_content, text="Start Download", width=160, height=40, fg_color=COLORS['accent_green'], command=self.on_download_clicked).pack(pady=(0, 15))
+        ctk.CTkLabel(self.download_content, text="Download website, repo or YouTube", font=ctk.CTkFont(family="Roboto", size=12), text_color=COLORS['text_secondary']).pack(pady=(0, 20))
+        SmoothButton(self.download_content, text="Start Download", width=160, height=40, fg_color=COLORS['accent_green'], command=self.start_download).pack(pady=(0, 15))
         self.download_progress = ctk.CTkProgressBar(self.download_content, width=160, height=4, corner_radius=2, progress_color=COLORS['accent_green'], fg_color=COLORS['border_light'])
         self.download_progress.pack()
         self.download_progress.set(0)
@@ -1133,11 +1618,19 @@ class App(ctk.CTk):
         # Shortcuts
         self.bind("<Control-q>", lambda e: self.quit())
         self.bind("<Control-g>", lambda e: self.start_git_setup())
-        self.bind("<Control-d>", lambda e: self.on_download_clicked())
+        self.bind("<Control-d>", lambda e: self.start_download())
         self.bind("<Control-s>", lambda e: self.toggle_settings())
         
         # --- AUTO UPDATE ON START ---
         self.after(1500, self.auto_check_update)
+    
+    def start_download(self):
+        """Open download window"""
+        if self.download_window is None or not self.download_window.winfo_exists():
+            self.download_window = DownloadWindow(self)
+            self.status_label.configure(text="Download window opened")
+        else:
+            self.download_window.focus()
     
     def start_git_setup(self):
         """Start Git setup process"""
@@ -1322,16 +1815,6 @@ class App(ctk.CTk):
                 progress_bar.set(target)
                 self.animation_running = False
         update_step(0)
-    
-    def on_download_clicked(self):
-        self.status_label.configure(text="Download in progress...")
-        self.status_dot.configure(text_color=COLORS['accent_orange'])
-        self.animate_progress(self.download_progress, 1.0, 2000)
-        def complete():
-            self.status_label.configure(text="Download completed!")
-            self.status_dot.configure(text_color=COLORS['accent_green'])
-            messagebox.showinfo("Success", "Download completed successfully!")
-        self.after(2000, complete)
 
 if __name__ == "__main__":
     ctk.set_appearance_mode("Dark")
