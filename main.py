@@ -119,6 +119,295 @@ class GitConfig:
             self.config['git_token'] = git_token
         self.save_config()
 
+class CloneWindow(ctk.CTkToplevel):
+    """Window yo gukora git clone"""
+    def __init__(self, parent):
+        super().__init__(parent)
+        
+        self.parent = parent
+        self.git_config = GitConfig()
+        self.title("Clone Repository")
+        self.geometry("600x500")
+        self.resizable(False, False)
+        self.configure(fg_color=COLORS['bg_secondary'])
+        
+        # Header
+        header = ctk.CTkFrame(self, fg_color="transparent")
+        header.pack(fill="x", pady=(20, 10), padx=25)
+        
+        # Try to load clone icon
+        try:
+            if os.path.exists("download.png"):
+                clone_icon = ctk.CTkImage(light_image=Image.open("download.png"), dark_image=Image.open("download.png"), size=(32, 32))
+                ctk.CTkLabel(header, image=clone_icon, text="").pack(side="left", padx=(0, 10))
+        except:
+            pass
+        
+        ctk.CTkLabel(
+            header,
+            text="Clone Repository",
+            font=ctk.CTkFont(family="Roboto", size=22, weight="bold"),
+            text_color=COLORS['text_primary']
+        ).pack(side="left")
+        
+        ctk.CTkLabel(
+            header,
+            text="Clone a Git repository",
+            font=ctk.CTkFont(family="Roboto", size=12),
+            text_color=COLORS['text_secondary']
+        ).pack(side="left", padx=(10, 0))
+        
+        # Separator
+        ctk.CTkFrame(self, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=25, pady=10)
+        
+        # Content
+        content = ctk.CTkFrame(self, fg_color="transparent")
+        content.pack(fill="both", expand=True, padx=25, pady=10)
+        
+        # Repository URL
+        repo_label = ctk.CTkLabel(
+            content,
+            text="Repository URL:",
+            font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
+            text_color=COLORS['text_primary']
+        )
+        repo_label.pack(anchor="w", pady=(0, 5))
+        
+        self.repo_entry = ctk.CTkEntry(
+            content,
+            height=40,
+            corner_radius=8,
+            fg_color=COLORS['bg_primary'],
+            text_color=COLORS['text_primary'],
+            placeholder_text="https://github.com/username/repo.git or git@github.com:username/repo.git"
+        )
+        self.repo_entry.pack(fill="x", pady=(0, 15))
+        
+        # Destination folder
+        folder_label = ctk.CTkLabel(
+            content,
+            text="Clone to:",
+            font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
+            text_color=COLORS['text_primary']
+        )
+        folder_label.pack(anchor="w", pady=(0, 5))
+        
+        folder_frame = ctk.CTkFrame(content, fg_color="transparent")
+        folder_frame.pack(fill="x", pady=(0, 15))
+        
+        self.folder_entry = ctk.CTkEntry(
+            folder_frame,
+            height=40,
+            corner_radius=8,
+            fg_color=COLORS['bg_primary'],
+            text_color=COLORS['text_primary'],
+            placeholder_text="/path/to/clone"
+        )
+        self.folder_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        
+        self.browse_btn = SmoothButton(
+            folder_frame,
+            text="Browse",
+            width=80,
+            height=35,
+            command=self.browse_folder
+        )
+        self.browse_btn.pack(side="right")
+        
+        # Options
+        options_frame = ctk.CTkFrame(content, fg_color="transparent")
+        options_frame.pack(fill="x", pady=10)
+        
+        self.recursive = ctk.CTkCheckBox(
+            options_frame,
+            text="Clone submodules (--recursive)",
+            font=ctk.CTkFont(family="Roboto", size=12),
+            text_color=COLORS['text_secondary'],
+            fg_color=COLORS['accent_blue']
+        )
+        self.recursive.pack(side="left", padx=(0, 20))
+        
+        self.shallow = ctk.CTkCheckBox(
+            options_frame,
+            text="Shallow clone (--depth 1)",
+            font=ctk.CTkFont(family="Roboto", size=12),
+            text_color=COLORS['text_secondary'],
+            fg_color=COLORS['accent_blue']
+        )
+        self.shallow.pack(side="left")
+        
+        # Clone button
+        self.clone_btn = SmoothButton(
+            content,
+            text="Clone Now",
+            height=45,
+            fg_color=COLORS['accent_green'],
+            font=ctk.CTkFont(family="Roboto", size=15, weight="bold"),
+            command=self.execute_clone
+        )
+        self.clone_btn.pack(fill="x", pady=15)
+        
+        # Progress
+        self.clone_progress = ctk.CTkProgressBar(
+            content,
+            height=6,
+            corner_radius=3,
+            progress_color=COLORS['accent_blue'],
+            fg_color=COLORS['border_light']
+        )
+        self.clone_progress.pack(fill="x", pady=5)
+        self.clone_progress.set(0)
+        
+        # Status
+        self.clone_status = ctk.CTkLabel(
+            content,
+            text="Ready to clone",
+            font=ctk.CTkFont(family="Roboto", size=12),
+            text_color=COLORS['text_secondary']
+        )
+        self.clone_status.pack(anchor="w", pady=5)
+        
+        # Output
+        self.output_text = ctk.CTkTextbox(
+            content,
+            height=120,
+            corner_radius=10,
+            fg_color=COLORS['bg_primary'],
+            text_color=COLORS['text_secondary'],
+            font=ctk.CTkFont(family="Roboto", size=11)
+        )
+        self.output_text.pack(fill="both", pady=5)
+        self.output_text.insert("1.0", "Clone output will appear here...")
+        self.output_text.configure(state="disabled")
+    
+    def browse_folder(self):
+        folder = filedialog.askdirectory(title="Select clone destination")
+        if folder:
+            self.folder_entry.delete(0, "end")
+            self.folder_entry.insert(0, folder)
+    
+    def safe_update_ui(self, widget, **kwargs):
+        """Safely update UI from thread"""
+        def update():
+            try:
+                for key, value in kwargs.items():
+                    if key == "text":
+                        widget.configure(text=value)
+                    elif key == "text_color":
+                        widget.configure(text_color=value)
+            except:
+                pass
+        self.after(0, update)
+    
+    def execute_clone(self):
+        repo_url = self.repo_entry.get().strip()
+        folder = self.folder_entry.get().strip()
+        
+        if not repo_url:
+            messagebox.showwarning("Missing URL", "Please enter repository URL")
+            return
+        
+        if not folder:
+            messagebox.showwarning("Missing Folder", "Please select clone destination")
+            return
+        
+        # Create folder if it doesn't exist
+        if not os.path.exists(folder):
+            try:
+                os.makedirs(folder)
+            except:
+                messagebox.showerror("Invalid Folder", "Could not create folder")
+                return
+        
+        self.clone_btn.configure(state="disabled", text="Cloning...")
+        self.safe_update_ui(self.clone_status, text="Starting clone...", text_color=COLORS['accent_orange'])
+        self.clone_progress.set(0.1)
+        self.output_text.configure(state="normal")
+        self.output_text.delete("1.0", "end")
+        self.output_text.insert("end", "=== Git Clone Started ===\n")
+        self.output_text.insert("end", f"Repository: {repo_url}\n")
+        self.output_text.insert("end", f"Destination: {folder}\n")
+        self.output_text.insert("end", "-" * 40 + "\n\n")
+        
+        def clone():
+            try:
+                # Get git token if available
+                git_token = self.git_config.get_git_token()
+                
+                # Prepare clone command
+                clone_cmd = "git clone"
+                if self.recursive.get():
+                    clone_cmd += " --recursive"
+                    self.output_text.insert("end", "Using --recursive\n")
+                if self.shallow.get():
+                    clone_cmd += " --depth 1"
+                    self.output_text.insert("end", "Using --depth 1 (shallow clone)\n")
+                
+                # If using HTTPS with token
+                if 'https://' in repo_url and git_token:
+                    repo_url_with_token = repo_url.replace('https://', f'https://{git_token}@')
+                    clone_cmd += f' "{repo_url_with_token}" "{folder}"'
+                    self.output_text.insert("end", "Using HTTPS with token\n")
+                else:
+                    clone_cmd += f' "{repo_url}" "{folder}"'
+                    self.output_text.insert("end", "Using SSH or HTTPS\n")
+                
+                self.safe_update_ui(self.clone_status, text="Cloning repository...", text_color=COLORS['accent_orange'])
+                self.clone_progress.set(0.3)
+                self.output_text.insert("end", f"Command: {clone_cmd}\n\n")
+                
+                # Environment to avoid terminal prompts
+                env = os.environ.copy()
+                env['GIT_ASKPASS'] = 'echo'
+                
+                result = subprocess.run(
+                    clone_cmd,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                    env=env
+                )
+                
+                self.clone_progress.set(0.8)
+                
+                if result.returncode == 0:
+                    self.safe_update_ui(self.clone_status, text="Clone completed successfully!", text_color=COLORS['accent_green'])
+                    self.clone_progress.set(1.0)
+                    self.output_text.insert("end", "\n" + "=" * 40 + "\n")
+                    self.output_text.insert("end", "SUCCESS: Repository cloned successfully!\n")
+                    if result.stdout:
+                        self.output_text.insert("end", result.stdout)
+                    messagebox.showinfo("Success", "Repository cloned successfully!")
+                else:
+                    self.safe_update_ui(self.clone_status, text="Clone failed", text_color=COLORS['accent_red'])
+                    self.clone_progress.set(0)
+                    self.output_text.insert("end", "\n" + "=" * 40 + "\n")
+                    self.output_text.insert("end", "ERROR: Clone failed!\n")
+                    self.output_text.insert("end", result.stderr)
+                    messagebox.showerror("Clone Failed", f"Clone failed:\n{result.stderr[:200]}")
+                
+                self.clone_btn.configure(state="normal", text="Clone Now")
+                self.output_text.configure(state="disabled")
+                
+            except subprocess.TimeoutExpired:
+                self.safe_update_ui(self.clone_status, text="Clone timed out", text_color=COLORS['accent_red'])
+                self.clone_btn.configure(state="normal", text="Clone Now")
+                self.output_text.insert("end", "\nERROR: Clone timed out\n")
+                self.output_text.configure(state="disabled")
+                messagebox.showerror("Clone Failed", "Clone timed out")
+                
+            except Exception as e:
+                self.safe_update_ui(self.clone_status, text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
+                self.clone_btn.configure(state="normal", text="Clone Now")
+                self.output_text.insert("end", f"\nERROR: {str(e)}\n")
+                self.output_text.configure(state="disabled")
+                messagebox.showerror("Clone Failed", f"Clone failed:\n{str(e)}")
+        
+        thread = threading.Thread(target=clone)
+        thread.daemon = True
+        thread.start()
+
 class GitSetupWindow(ctk.CTkToplevel):
     """Window yo gushiraho Git name, email na SSH key - all inside app"""
     def __init__(self, parent):
@@ -211,7 +500,7 @@ class GitSetupWindow(ctk.CTkToplevel):
         )
         self.email_entry.pack(side="left", fill="x", expand=True, padx=(10, 0))
         
-        # GitHub Token (optional but helps avoid terminal prompts)
+        # GitHub Token
         token_label = ctk.CTkLabel(
             content,
             text="GitHub Token (optional):",
@@ -669,7 +958,6 @@ class GitPushWindow(ctk.CTkToplevel):
             self.folder_entry.insert(0, folder)
     
     def safe_update_ui(self, widget, **kwargs):
-        """Safely update UI from thread"""
         def update():
             try:
                 for key, value in kwargs.items():
@@ -711,10 +999,8 @@ class GitPushWindow(ctk.CTkToplevel):
         
         def push():
             try:
-                # Get git token if available
                 git_token = self.git_config.get_git_token()
                 
-                # Step 1: Check if git is initialized
                 git_dir = os.path.join(folder, ".git")
                 if not os.path.exists(git_dir):
                     self.safe_update_ui(self.push_status, text="Initializing git repository...", text_color=COLORS['accent_orange'])
@@ -728,7 +1014,6 @@ class GitPushWindow(ctk.CTkToplevel):
                         self.output_text.insert("end", f"    Error: {result.stderr}\n")
                         raise Exception("Git init failed")
                 
-                # Step 2: Set user config
                 self.safe_update_ui(self.push_status, text="Configuring user...", text_color=COLORS['accent_orange'])
                 self.push_progress.set(0.3)
                 self.output_text.insert("end", "[2] Configuring user...\n")
@@ -737,7 +1022,6 @@ class GitPushWindow(ctk.CTkToplevel):
                 subprocess.run(f'cd "{folder}" && git config user.email "{self.email}"', shell=True, capture_output=True)
                 self.output_text.insert("end", f"    User: {self.name} <{self.email}>\n")
                 
-                # Step 3: Add remote
                 self.safe_update_ui(self.push_status, text="Adding remote...", text_color=COLORS['accent_orange'])
                 self.push_progress.set(0.4)
                 self.output_text.insert("end", "[3] Adding remote...\n")
@@ -750,7 +1034,6 @@ class GitPushWindow(ctk.CTkToplevel):
                     self.output_text.insert("end", f"    Error: {result.stderr}\n")
                     raise Exception("Remote add failed")
                 
-                # Step 4: Add all files
                 self.safe_update_ui(self.push_status, text="Adding files...", text_color=COLORS['accent_orange'])
                 self.push_progress.set(0.5)
                 self.output_text.insert("end", "[4] Adding files...\n")
@@ -762,7 +1045,6 @@ class GitPushWindow(ctk.CTkToplevel):
                     self.output_text.insert("end", f"    Error: {result.stderr}\n")
                     raise Exception("Git add failed")
                 
-                # Step 5: Commit
                 self.safe_update_ui(self.push_status, text="Committing...", text_color=COLORS['accent_orange'])
                 self.push_progress.set(0.6)
                 self.output_text.insert("end", "[5] Creating commit...\n")
@@ -773,12 +1055,10 @@ class GitPushWindow(ctk.CTkToplevel):
                 else:
                     self.output_text.insert("end", f"    Note: {result.stderr}\n")
                 
-                # Step 6: Push - Use SSH or HTTPS with token
                 self.safe_update_ui(self.push_status, text="Pushing to GitHub...", text_color=COLORS['accent_orange'])
                 self.push_progress.set(0.7)
                 self.output_text.insert("end", "[6] Pushing to GitHub...\n")
                 
-                # Prepare environment to avoid terminal prompts
                 env = os.environ.copy()
                 env['GIT_ASKPASS'] = 'echo'
                 env['GIT_AUTHOR_NAME'] = self.name
@@ -786,21 +1066,17 @@ class GitPushWindow(ctk.CTkToplevel):
                 env['GIT_COMMITTER_NAME'] = self.name
                 env['GIT_COMMITTER_EMAIL'] = self.email
                 
-                # If using HTTPS and token provided, inject credentials
                 if 'https://' in repo_url and git_token:
-                    # Modify URL to include token
                     repo_url_with_token = repo_url.replace('https://', f'https://{git_token}@')
-                    push_cmd = f"git push -u origin main"
+                    push_cmd = "git push -u origin main"
                     if self.force_push.get():
-                        push_cmd = f"git push -u origin main --force"
+                        push_cmd = "git push -u origin main --force"
                     elif self.accept_push.get():
-                        push_cmd = f"git push -u origin main --force-with-lease"
+                        push_cmd = "git push -u origin main --force-with-lease"
                     
-                    # Use the URL with token for push
                     cmd = f'cd "{folder}" && git remote set-url origin {repo_url_with_token} && {push_cmd}'
-                    self.output_text.insert("end", f"    Using HTTPS with token\n")
+                    self.output_text.insert("end", "    Using HTTPS with token\n")
                 else:
-                    # Use SSH (no token needed)
                     push_cmd = "git push -u origin main"
                     if self.force_push.get():
                         push_cmd = "git push -u origin main --force"
@@ -882,6 +1158,7 @@ class App(ctk.CTk):
         self.original_bg_image = None
         self.git_setup_window = None
         self.git_push_window = None
+        self.clone_window = None
         self.git_config = GitConfig()
         
         # Main container
@@ -1196,10 +1473,10 @@ class App(ctk.CTk):
                 return None
         
         # --- CARDS ---
-        # Git Card
+        # Git Push Card
         self.git_blur_img = make_blur_crop((170, 180, 430, 580))
         self.git_card = ctk.CTkFrame(self.bg_frame, corner_radius=20, border_width=1, border_color=COLORS['border_light'], fg_color=COLORS['bg_secondary'])
-        self.git_card.place(relx=0.32, rely=0.5, anchor="center", relwidth=0.30, relheight=0.55)
+        self.git_card.place(relx=0.35, rely=0.5, anchor="center", relwidth=0.28, relheight=0.55)
         
         ctk.CTkFrame(self.git_card, fg_color=COLORS['bg_secondary'], corner_radius=20).place(x=0, y=0, relwidth=1, relheight=1)
         
@@ -1218,14 +1495,44 @@ class App(ctk.CTk):
         if self.git_photo:
             ctk.CTkLabel(self.git_content, image=self.git_photo, text="").pack(pady=(0, 15))
         ctk.CTkLabel(self.git_content, text="Git Push", font=ctk.CTkFont(family="Roboto", size=18, weight="bold"), text_color=COLORS['text_primary']).pack(pady=(0, 5))
-        ctk.CTkLabel(self.git_content, text="Push changes to remote repository", font=ctk.CTkFont(family="Roboto", size=12), text_color=COLORS['text_secondary']).pack(pady=(0, 20))
+        ctk.CTkLabel(self.git_content, text="Push changes to remote", font=ctk.CTkFont(family="Roboto", size=12), text_color=COLORS['text_secondary']).pack(pady=(0, 20))
         SmoothButton(self.git_content, text="Execute Push", width=160, height=40, command=self.start_git_setup).pack(pady=(0, 15))
         self.git_progress = ctk.CTkProgressBar(self.git_content, width=160, height=4, corner_radius=2, progress_color=COLORS['accent_blue'], fg_color=COLORS['border_light'])
         self.git_progress.pack()
         self.git_progress.set(0)
         
-        # Download Card - Removed, now only Git Push
-        # Status bar moved to bottom
+        # Clone Card
+        self.clone_blur_img = make_blur_crop((430, 180, 690, 580))
+        self.clone_card = ctk.CTkFrame(self.bg_frame, corner_radius=20, border_width=1, border_color=COLORS['border_light'], fg_color=COLORS['bg_secondary'])
+        self.clone_card.place(relx=0.65, rely=0.5, anchor="center", relwidth=0.28, relheight=0.55)
+        
+        ctk.CTkFrame(self.clone_card, fg_color=COLORS['bg_secondary'], corner_radius=20).place(x=0, y=0, relwidth=1, relheight=1)
+        
+        # Clone icon
+        try:
+            if os.path.exists("download.png"):
+                clone_pil = Image.open("download.png")
+                self.clone_photo = ctk.CTkImage(light_image=clone_pil, dark_image=clone_pil, size=(80, 80))
+            else:
+                self.clone_photo = None
+        except:
+            self.clone_photo = None
+        
+        self.clone_content = ctk.CTkFrame(self.clone_card, fg_color="transparent")
+        self.clone_content.place(relx=0.5, rely=0.5, anchor="center")
+        
+        if self.clone_photo:
+            ctk.CTkLabel(self.clone_content, image=self.clone_photo, text="").pack(pady=(0, 15))
+        else:
+            # Text icon if no image
+            ctk.CTkLabel(self.clone_content, text="[Clone]", font=ctk.CTkFont(family="Roboto", size=30, weight="bold"), text_color=COLORS['accent_blue']).pack(pady=(0, 15))
+        
+        ctk.CTkLabel(self.clone_content, text="Clone Repository", font=ctk.CTkFont(family="Roboto", size=18, weight="bold"), text_color=COLORS['text_primary']).pack(pady=(0, 5))
+        ctk.CTkLabel(self.clone_content, text="Clone a Git repository", font=ctk.CTkFont(family="Roboto", size=12), text_color=COLORS['text_secondary']).pack(pady=(0, 20))
+        SmoothButton(self.clone_content, text="Open Clone", width=160, height=40, fg_color=COLORS['accent_green'], command=self.start_clone).pack(pady=(0, 15))
+        self.clone_progress = ctk.CTkProgressBar(self.clone_content, width=160, height=4, corner_radius=2, progress_color=COLORS['accent_green'], fg_color=COLORS['border_light'])
+        self.clone_progress.pack()
+        self.clone_progress.set(0)
         
         # --- STATUS BAR ---
         self.status_bar = ctk.CTkFrame(self.main_container, fg_color=COLORS['bg_secondary'], height=35, corner_radius=0)
@@ -1239,7 +1546,7 @@ class App(ctk.CTk):
         
         self.shortcuts_label = ctk.CTkLabel(
             self.status_bar,
-            text="Ctrl+G: Git | Ctrl+S: Settings",
+            text="Ctrl+G: Git | Ctrl+C: Clone | Ctrl+S: Settings",
             font=ctk.CTkFont(family="Roboto", size=10),
             text_color=COLORS['text_secondary']
         )
@@ -1248,10 +1555,19 @@ class App(ctk.CTk):
         # Shortcuts
         self.bind("<Control-q>", lambda e: self.quit())
         self.bind("<Control-g>", lambda e: self.start_git_setup())
+        self.bind("<Control-c>", lambda e: self.start_clone())
         self.bind("<Control-s>", lambda e: self.toggle_settings())
         
         # --- AUTO UPDATE ON START ---
         self.after(1500, self.auto_check_update)
+    
+    def start_clone(self):
+        """Open clone window"""
+        if self.clone_window is None or not self.clone_window.winfo_exists():
+            self.clone_window = CloneWindow(self)
+            self.status_label.configure(text="Clone window opened")
+        else:
+            self.clone_window.focus()
     
     def start_git_setup(self):
         # Check if git is installed
@@ -1384,7 +1700,7 @@ class App(ctk.CTk):
                     shutil.copy2(os.path.join(current_dir, 'main.py'), backup_path)
                     shutil.copy2(main_file, os.path.join(current_dir, 'main.py'))
                     
-                    for file in ['app.jpeg', 'image_0.png']:
+                    for file in ['app.jpeg', 'image_0.png', 'download.png']:
                         src = os.path.join(extracted_dir, file)
                         if os.path.exists(src):
                             shutil.copy2(src, os.path.join(current_dir, file))
@@ -1408,24 +1724,6 @@ class App(ctk.CTk):
         if messagebox.askyesno("Restart", "Restart app to apply update?"):
             python = sys.executable
             os.execl(python, python, *sys.argv)
-    
-    def animate_progress(self, progress_bar, target, duration=1000):
-        if self.animation_running:
-            return
-        self.animation_running = True
-        steps = 50
-        current = progress_bar.get()
-        step_size = (target - current) / steps
-        def update_step(step):
-            nonlocal current
-            if step < steps:
-                current += step_size
-                progress_bar.set(current)
-                self.after(duration // steps, lambda: update_step(step + 1))
-            else:
-                progress_bar.set(target)
-                self.animation_running = False
-        update_step(0)
 
 if __name__ == "__main__":
     ctk.set_appearance_mode("Dark")
