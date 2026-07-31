@@ -9,6 +9,7 @@ import zipfile
 from tkinter import messagebox
 import webbrowser
 import threading
+import time
 
 # --- GIT UPDATE FUNCTIONS ---
 GITHUB_REPO = "rwandaxcode/gitpushand-dawnlaods"
@@ -82,6 +83,7 @@ class App(ctk.CTk):
         self.animation_running = False
         self.update_available = False
         self.update_version = ""
+        self.update_ready = False
         self.original_bg_image = None
         
         # Main container
@@ -106,28 +108,28 @@ class App(ctk.CTk):
         # Settings button
         self.settings_btn = ctk.CTkButton(
             self.header_frame,
-            text="[Settings]",
-            width=80,
+            text="⚙️",
+            width=40,
             height=36,
             corner_radius=10,
             fg_color="transparent",
             hover_color=COLORS['bg_secondary'],
             text_color=COLORS['text_secondary'],
-            font=ctk.CTkFont(size=12, weight="bold"),
+            font=ctk.CTkFont(size=18),
             command=self.toggle_settings
         )
         self.settings_btn.pack(side="right", padx=(0, 8))
         
         self.close_btn = ctk.CTkButton(
             self.header_frame,
-            text="X",
+            text="✕",
             width=30,
             height=30,
             corner_radius=8,
             fg_color="transparent",
             hover_color=COLORS['bg_secondary'],
             text_color=COLORS['text_secondary'],
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=ctk.CTkFont(size=16, weight="bold"),
             command=self.quit
         )
         self.close_btn.pack(side="right", padx=(0, 0))
@@ -144,11 +146,11 @@ class App(ctk.CTk):
         )
         self.version_badge.pack(side="right", padx=(0, 10))
         
-        # --- SETTINGS PANEL (inside app, hidden by default) ---
+        # --- SETTINGS PANEL (Responsive UI) ---
         self.settings_frame = ctk.CTkFrame(
             self.main_container,
             fg_color=COLORS['bg_secondary'],
-            corner_radius=15,
+            corner_radius=20,
             border_width=1,
             border_color=COLORS['border_light']
         )
@@ -157,150 +159,229 @@ class App(ctk.CTk):
         
         # Settings header
         settings_header = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
-        settings_header.pack(fill="x", pady=(15, 5), padx=20)
+        settings_header.pack(fill="x", pady=(20, 10), padx=25)
         
         ctk.CTkLabel(
             settings_header,
             text="Settings",
-            font=ctk.CTkFont(family="Roboto", size=18, weight="bold"),
+            font=ctk.CTkFont(family="Roboto", size=20, weight="bold"),
             text_color=COLORS['text_primary']
         ).pack(side="left")
         
-        # Close settings button
         ctk.CTkButton(
             settings_header,
-            text="X",
-            width=25,
-            height=25,
-            corner_radius=6,
+            text="✕",
+            width=30,
+            height=30,
+            corner_radius=8,
             fg_color="transparent",
             hover_color=COLORS['bg_primary'],
             text_color=COLORS['text_secondary'],
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=ctk.CTkFont(size=16, weight="bold"),
             command=self.toggle_settings
         ).pack(side="right")
         
         # Separator
-        ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=20, pady=5)
+        ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=25, pady=5)
         
-        # --- UPDATE SECTION (Simplified - only progress and restart) ---
+        # --- UPDATE SECTION (Beautiful UI) ---
         update_section = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
-        update_section.pack(fill="x", padx=25, pady=10)
+        update_section.pack(fill="x", padx=25, pady=15)
+        
+        # Update header with icon
+        update_header = ctk.CTkFrame(update_section, fg_color="transparent")
+        update_header.pack(fill="x", pady=(0, 10))
         
         ctk.CTkLabel(
-            update_section,
-            text="Update Application",
+            update_header,
+            text="🔄",
+            font=ctk.CTkFont(size=24),
+            text_color=COLORS['accent_blue']
+        ).pack(side="left", padx=(0, 10))
+        
+        ctk.CTkLabel(
+            update_header,
+            text="Update",
             font=ctk.CTkFont(family="Roboto", size=16, weight="bold"),
             text_color=COLORS['text_primary']
-        ).pack(anchor="w", pady=(0, 5))
+        ).pack(side="left")
         
-        # Update info frame
-        update_info_frame = ctk.CTkFrame(update_section, fg_color=COLORS['bg_primary'], corner_radius=10)
-        update_info_frame.pack(fill="x", pady=5)
+        # Update status card
+        status_card = ctk.CTkFrame(update_section, fg_color=COLORS['bg_primary'], corner_radius=12)
+        status_card.pack(fill="x", pady=5)
         
-        self.update_status_label = ctk.CTkLabel(
-            update_info_frame,
+        # Status icon and text
+        status_row = ctk.CTkFrame(status_card, fg_color="transparent")
+        status_row.pack(fill="x", padx=15, pady=10)
+        
+        self.update_status_icon = ctk.CTkLabel(
+            status_row,
+            text="⏳",
+            font=ctk.CTkFont(size=20),
+            text_color=COLORS['accent_orange']
+        )
+        self.update_status_icon.pack(side="left", padx=(0, 10))
+        
+        status_text_frame = ctk.CTkFrame(status_row, fg_color="transparent")
+        status_text_frame.pack(side="left", fill="x", expand=True)
+        
+        self.update_status_title = ctk.CTkLabel(
+            status_text_frame,
             text="Checking for updates...",
-            font=ctk.CTkFont(family="Roboto", size=12),
+            font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
+            text_color=COLORS['text_primary']
+        )
+        self.update_status_title.pack(anchor="w")
+        
+        self.update_status_desc = ctk.CTkLabel(
+            status_text_frame,
+            text="Please wait while we check for the latest version",
+            font=ctk.CTkFont(family="Roboto", size=11),
             text_color=COLORS['text_secondary']
         )
-        self.update_status_label.pack(anchor="w", padx=15, pady=5)
+        self.update_status_desc.pack(anchor="w")
         
-        # Update progress
+        # Progress bar
         self.update_progress = ctk.CTkProgressBar(
             update_section,
-            width=400,
-            height=6,
-            corner_radius=3,
+            height=8,
+            corner_radius=4,
             progress_color=COLORS['accent_blue'],
             fg_color=COLORS['border_light']
         )
-        self.update_progress.pack(pady=(10, 5))
+        self.update_progress.pack(pady=(10, 15), fill="x")
         self.update_progress.set(0)
         
-        # Update button (only for restart when update is ready)
-        self.restart_btn = SmoothButton(
-            update_section,
-            text="Restart & Update",
-            width=180,
-            height=35,
+        # Restart button (beautiful)
+        self.restart_frame = ctk.CTkFrame(update_section, fg_color="transparent")
+        self.restart_frame.pack(fill="x", pady=5)
+        
+        self.restart_btn = ctk.CTkButton(
+            self.restart_frame,
+            text="🔄 Restart & Update",
+            height=45,
+            corner_radius=12,
             fg_color=COLORS['accent_green'],
+            hover_color='#2a9d4d',
+            font=ctk.CTkFont(family="Roboto", size=14, weight="bold"),
             command=self.restart_app
         )
-        self.restart_btn.pack(pady=10)
+        self.restart_btn.pack(fill="x")
         self.restart_btn.configure(state="disabled")
         
         # Separator
-        ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=20, pady=10)
+        ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=25, pady=5)
         
-        # --- ABOUT SECTION ---
+        # --- ABOUT SECTION (Beautiful UI) ---
         about_section = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
-        about_section.pack(fill="x", padx=25, pady=10)
+        about_section.pack(fill="x", padx=25, pady=15)
+        
+        # About header with icon
+        about_header = ctk.CTkFrame(about_section, fg_color="transparent")
+        about_header.pack(fill="x", pady=(0, 10))
         
         ctk.CTkLabel(
-            about_section,
+            about_header,
+            text="ℹ️",
+            font=ctk.CTkFont(size=24),
+            text_color=COLORS['accent_blue']
+        ).pack(side="left", padx=(0, 10))
+        
+        ctk.CTkLabel(
+            about_header,
             text="About",
             font=ctk.CTkFont(family="Roboto", size=16, weight="bold"),
             text_color=COLORS['text_primary']
-        ).pack(anchor="w", pady=(0, 5))
+        ).pack(side="left")
         
-        about_frame = ctk.CTkFrame(about_section, fg_color=COLORS['bg_primary'], corner_radius=10)
-        about_frame.pack(fill="x", pady=5)
+        # About card
+        about_card = ctk.CTkFrame(about_section, fg_color=COLORS['bg_primary'], corner_radius=12)
+        about_card.pack(fill="x", pady=5)
+        
+        # App name
+        app_name_frame = ctk.CTkFrame(about_card, fg_color="transparent")
+        app_name_frame.pack(fill="x", padx=15, pady=10)
         
         ctk.CTkLabel(
-            about_frame,
+            app_name_frame,
             text="Git & Download Panel Pro",
-            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Roboto", size=15, weight="bold"),
             text_color=COLORS['text_primary']
-        ).pack(anchor="w", padx=15, pady=3)
+        ).pack(anchor="w")
         
         ctk.CTkLabel(
-            about_frame,
-            text="Version: 2.0.0",
+            app_name_frame,
+            text="Version 2.0.0",
             font=ctk.CTkFont(family="Roboto", size=12),
             text_color=COLORS['text_secondary']
-        ).pack(anchor="w", padx=15, pady=3)
+        ).pack(anchor="w")
         
-        developer_label = ctk.CTkLabel(
-            about_frame,
-            text="Developed by: Niyibizi Kevin",
-            font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
+        # Separator in card
+        ctk.CTkFrame(app_name_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", pady=8)
+        
+        # Developer
+        dev_frame = ctk.CTkFrame(app_name_frame, fg_color="transparent")
+        dev_frame.pack(fill="x", pady=3)
+        
+        ctk.CTkLabel(
+            dev_frame,
+            text="👨‍💻",
+            font=ctk.CTkFont(size=16),
+            text_color=COLORS['text_secondary']
+        ).pack(side="left", padx=(0, 8))
+        
+        ctk.CTkLabel(
+            dev_frame,
+            text="Developed by:",
+            font=ctk.CTkFont(family="Roboto", size=12),
+            text_color=COLORS['text_secondary']
+        ).pack(side="left")
+        
+        ctk.CTkLabel(
+            dev_frame,
+            text="Niyibizi Kevin",
+            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
             text_color=COLORS['accent_blue']
-        )
-        developer_label.pack(anchor="w", padx=15, pady=3)
+        ).pack(side="left", padx=(5, 0))
+        
+        # Website
+        website_frame = ctk.CTkFrame(app_name_frame, fg_color="transparent")
+        website_frame.pack(fill="x", pady=3)
         
         ctk.CTkLabel(
-            about_frame,
-            text="Year: 2024",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
-        ).pack(anchor="w", padx=15, pady=3)
-        
-        # Website link (clickable)
-        website_frame = ctk.CTkFrame(about_frame, fg_color="transparent")
-        website_frame.pack(anchor="w", padx=15, pady=5)
-        
-        website_label = ctk.CTkLabel(
             website_frame,
-            text="Visit: niyibizi_kevin.netlify.app",
+            text="🌐",
+            font=ctk.CTkFont(size=16),
+            text_color=COLORS['text_secondary']
+        ).pack(side="left", padx=(0, 8))
+        
+        website_link = ctk.CTkLabel(
+            website_frame,
+            text="niyibizi_kevin.netlify.app",
             font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
             text_color=COLORS['accent_blue'],
             cursor="hand2"
         )
-        website_label.pack(side="left")
+        website_link.pack(side="left")
+        website_link.bind("<Button-1>", lambda e: self.open_website())
         
-        visit_btn = ctk.CTkButton(
-            website_frame,
-            text="Open",
-            width=60,
-            height=25,
-            corner_radius=8,
-            fg_color=COLORS['accent_blue'],
-            hover_color='#0a7eff',
-            font=ctk.CTkFont(family="Roboto", size=10, weight="bold"),
-            command=self.open_website
-        )
-        visit_btn.pack(side="left", padx=(10, 0))
+        # Year
+        year_frame = ctk.CTkFrame(app_name_frame, fg_color="transparent")
+        year_frame.pack(fill="x", pady=3)
+        
+        ctk.CTkLabel(
+            year_frame,
+            text="📅",
+            font=ctk.CTkFont(size=16),
+            text_color=COLORS['text_secondary']
+        ).pack(side="left", padx=(0, 8))
+        
+        ctk.CTkLabel(
+            year_frame,
+            text="2024",
+            font=ctk.CTkFont(family="Roboto", size=12),
+            text_color=COLORS['text_secondary']
+        ).pack(side="left")
         
         # --- BACKGROUND IMAGE ---
         self.bg_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
@@ -381,7 +462,7 @@ class App(ctk.CTk):
         self.status_bar = ctk.CTkFrame(self.main_container, fg_color=COLORS['bg_secondary'], height=35, corner_radius=0)
         self.status_bar.pack(fill="x", side="bottom")
         
-        self.status_dot = ctk.CTkLabel(self.status_bar, text="*", font=ctk.CTkFont(family="Roboto", size=10), text_color=COLORS['accent_green'])
+        self.status_dot = ctk.CTkLabel(self.status_bar, text="●", font=ctk.CTkFont(family="Roboto", size=10), text_color=COLORS['accent_green'])
         self.status_dot.pack(side="left", padx=(20, 8))
         
         self.status_label = ctk.CTkLabel(self.status_bar, text="Ready", font=ctk.CTkFont(family="Roboto", size=12), text_color=COLORS['text_secondary'])
@@ -401,16 +482,14 @@ class App(ctk.CTk):
         self.bind("<Control-d>", lambda e: self.on_download_clicked(None))
         self.bind("<Control-s>", lambda e: self.toggle_settings())
         
-        # --- AUTO CHECK FOR UPDATE ON START ---
-        self.after(2000, self.auto_check_update)
+        # --- AUTO UPDATE ON START ---
+        self.after(1500, self.auto_check_update)
     
     def open_website(self):
-        """Open developer website"""
         webbrowser.open("https://niyibizi_kevin.netlify.app")
         self.status_label.configure(text="Opening developer website...")
     
     def toggle_settings(self):
-        """Toggle settings panel visibility"""
         if self.settings_frame.winfo_ismapped():
             self.settings_frame.pack_forget()
             self.status_label.configure(text="Settings closed")
@@ -418,33 +497,37 @@ class App(ctk.CTk):
         else:
             self.settings_frame.pack(fill="x", padx=30, pady=(0, 15), before=self.bg_frame)
             self.status_label.configure(text="Settings opened")
-            self.geometry("900x820")
+            self.geometry("900x850")
+    
+    def update_ui_status(self, icon, title, desc, progress, color=COLORS['accent_orange']):
+        """Update status UI elements"""
+        self.update_status_icon.configure(text=icon, text_color=color)
+        self.update_status_title.configure(text=title)
+        self.update_status_desc.configure(text=desc)
+        self.update_progress.set(progress)
     
     def auto_check_update(self):
-        """Check for updates automatically when app starts"""
+        """Check for updates automatically"""
+        self.update_ui_status("⏳", "Checking for updates...", "Please wait while we check for the latest version", 0.1)
         self.status_label.configure(text="Checking for updates...")
-        self.update_status_label.configure(text="Checking for updates...")
         
         def check():
             try:
                 response = requests.get(GITHUB_API_URL, timeout=10)
                 if response.status_code == 200:
                     data = response.json()
-                    # We have update available
                     self.update_available = True
                     self.update_version = data['sha'][:7]
-                    
-                    # Download update automatically
+                    self.update_ui_status("📥", "Update available!", "Downloading update automatically...", 0.2, COLORS['accent_blue'])
                     self.download_update_auto()
                 else:
-                    self.update_status_label.configure(text="No updates available")
-                    self.status_label.configure(text="Ready - No updates available")
-                    self.update_progress.set(0)
+                    self.update_ui_status("✅", "No updates available", "You are using the latest version", 1.0, COLORS['accent_green'])
+                    self.status_label.configure(text="Ready - Latest version")
+                    self.restart_btn.configure(state="disabled")
                     
             except Exception as e:
-                self.update_status_label.configure(text="Could not check for updates")
+                self.update_ui_status("⚠️", "Could not check updates", "Check your internet connection", 0, COLORS['accent_red'])
                 self.status_label.configure(text="Ready - Update check failed")
-                self.update_progress.set(0)
         
         thread = threading.Thread(target=check)
         thread.daemon = True
@@ -452,31 +535,32 @@ class App(ctk.CTk):
     
     def download_update_auto(self):
         """Download update automatically in background"""
-        self.update_status_label.configure(text="Downloading update...")
-        self.status_label.configure(text="Downloading update...")
-        self.update_progress.set(0.1)
-        
         def download():
             try:
                 response = requests.get(GITHUB_ZIP_URL, stream=True, timeout=30)
                 if response.status_code != 200:
                     raise Exception("Failed to download update")
                 
-                self.update_progress.set(0.3)
+                self.update_ui_status("📥", "Downloading update...", "Please wait while we download the latest version", 0.3)
                 
                 temp_dir = tempfile.mkdtemp()
                 zip_path = os.path.join(temp_dir, "update.zip")
                 
+                total_size = int(response.headers.get('content-length', 0))
+                downloaded = 0
+                
                 with open(zip_path, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
                         f.write(chunk)
+                        downloaded += len(chunk)
+                        if total_size > 0:
+                            progress = 0.3 + (0.4 * (downloaded / total_size))
+                            self.update_progress.set(progress)
                 
-                self.update_progress.set(0.5)
+                self.update_ui_status("📦", "Extracting files...", "Preparing update for installation", 0.7)
                 
                 with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                     zip_ref.extractall(temp_dir)
-                
-                self.update_progress.set(0.7)
                 
                 extracted_dir = None
                 for item in os.listdir(temp_dir):
@@ -491,39 +575,31 @@ class App(ctk.CTk):
                 
                 main_file = os.path.join(extracted_dir, 'main.py')
                 if os.path.exists(main_file):
-                    # Backup current file
                     backup_path = os.path.join(current_dir, 'main_backup.py')
                     shutil.copy2(os.path.join(current_dir, 'main.py'), backup_path)
-                    
-                    # Copy new file
                     shutil.copy2(main_file, os.path.join(current_dir, 'main.py'))
                     
-                    # Copy other files if they exist
                     for file in ['app.jpeg', 'image_0.png', 'ytb.png']:
                         src = os.path.join(extracted_dir, file)
                         if os.path.exists(src):
                             shutil.copy2(src, os.path.join(current_dir, file))
                 
-                self.update_progress.set(0.9)
                 shutil.rmtree(temp_dir)
                 
-                self.update_progress.set(1.0)
-                self.update_status_label.configure(text=f"Update ready! (v{self.update_version})")
-                self.status_label.configure(text=f"Update ready! Restart to apply")
+                self.update_ui_status("✅", "Update ready!", f"Version {self.update_version} is ready to install", 1.0, COLORS['accent_green'])
+                self.status_label.configure(text="Update ready! Restart to apply")
                 self.restart_btn.configure(state="normal")
                 
             except Exception as e:
-                self.update_status_label.configure(text=f"Update failed: {str(e)[:50]}")
+                self.update_ui_status("❌", "Update failed", f"Error: {str(e)[:50]}", 0, COLORS['accent_red'])
                 self.status_label.configure(text="Update failed")
-                self.update_progress.set(0)
         
         thread = threading.Thread(target=download)
         thread.daemon = True
         thread.start()
     
     def restart_app(self):
-        """Restart app to apply update"""
-        if messagebox.askyesno("Restart", "Restart app to apply update?"):
+        if messagebox.askyesno("Restart", "🔄 Restart app to apply update?"):
             python = sys.executable
             os.execl(python, python, *sys.argv)
     
