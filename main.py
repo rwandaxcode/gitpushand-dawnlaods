@@ -14,7 +14,7 @@ import subprocess
 import json
 
 # --- GIT UPDATE FUNCTIONS ---
-GITHUB_REPO = "rwandaxcode/gitpushand-dawnlaods"
+GITHUB_REPO = "rwandaxcode/gitpushand-dawnlaod"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/commits/main"
 GITHUB_ZIP_URL = f"https://github.com/{GITHUB_REPO}/archive/main.zip"
 
