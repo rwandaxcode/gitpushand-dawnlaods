@@ -39,7 +39,6 @@ COLORS = {
 class SmoothButton(ctk.CTkButton):
     """Button isa na macOS/Deepin ihora smooth"""
     def __init__(self, master, **kwargs):
-        # Remove conflicting arguments
         if 'fg_color' in kwargs:
             kwargs.pop('fg_color')
         if 'hover_color' in kwargs:
@@ -106,463 +105,19 @@ class GitConfig:
     def get_ssh_key(self):
         return self.config.get('ssh_key', '')
     
+    def get_git_token(self):
+        return self.config.get('git_token', '')
+    
     def is_configured(self):
         return bool(self.get_name() and self.get_email() and self.get_ssh_key())
     
-    def set_config(self, name, email, ssh_key):
+    def set_config(self, name, email, ssh_key, git_token=''):
         self.config['name'] = name
         self.config['email'] = email
         self.config['ssh_key'] = ssh_key
+        if git_token:
+            self.config['git_token'] = git_token
         self.save_config()
-
-class DownloadWindow(ctk.CTkToplevel):
-    """Window yo gukurura website, repo, cyangwa YouTube video"""
-    def __init__(self, parent):
-        super().__init__(parent)
-        
-        self.parent = parent
-        self.title("Download")
-        self.geometry("650x600")
-        self.resizable(False, False)
-        self.configure(fg_color=COLORS['bg_secondary'])
-        
-        self.download_type = "website"
-        
-        # Header
-        header = ctk.CTkFrame(self, fg_color="transparent")
-        header.pack(fill="x", pady=(20, 10), padx=25)
-        
-        ctk.CTkLabel(
-            header,
-            text="Download",
-            font=ctk.CTkFont(family="Roboto", size=22, weight="bold"),
-            text_color=COLORS['text_primary']
-        ).pack(side="left")
-        
-        ctk.CTkLabel(
-            header,
-            text="Download website, repo or YouTube video",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
-        ).pack(side="left", padx=(10, 0))
-        
-        # Separator
-        ctk.CTkFrame(self, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=25, pady=10)
-        
-        # Content
-        content = ctk.CTkFrame(self, fg_color="transparent")
-        content.pack(fill="both", expand=True, padx=25, pady=10)
-        
-        # Download type selection
-        type_label = ctk.CTkLabel(
-            content,
-            text="Select download type:",
-            font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
-            text_color=COLORS['text_primary']
-        )
-        type_label.pack(anchor="w", pady=(0, 10))
-        
-        type_frame = ctk.CTkFrame(content, fg_color="transparent")
-        type_frame.pack(fill="x", pady=(0, 15))
-        
-        self.website_btn = ctk.CTkButton(
-            type_frame,
-            text="Website",
-            width=120,
-            height=35,
-            corner_radius=8,
-            fg_color=COLORS['accent_blue'],
-            hover_color='#0a7eff',
-            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
-            command=lambda: self.set_download_type("website")
-        )
-        self.website_btn.pack(side="left", padx=(0, 10))
-        
-        self.repo_btn = ctk.CTkButton(
-            type_frame,
-            text="Repository",
-            width=120,
-            height=35,
-            corner_radius=8,
-            fg_color=COLORS['bg_primary'],
-            hover_color=COLORS['bg_primary'],
-            font=ctk.CTkFont(family="Roboto", size=12),
-            command=lambda: self.set_download_type("repo")
-        )
-        self.repo_btn.pack(side="left", padx=(0, 10))
-        
-        self.youtube_btn = ctk.CTkButton(
-            type_frame,
-            text="YouTube Video",
-            width=120,
-            height=35,
-            corner_radius=8,
-            fg_color=COLORS['bg_primary'],
-            hover_color=COLORS['bg_primary'],
-            font=ctk.CTkFont(family="Roboto", size=12),
-            command=lambda: self.set_download_type("youtube")
-        )
-        self.youtube_btn.pack(side="left")
-        
-        # Separator
-        ctk.CTkFrame(content, height=1, fg_color=COLORS['border_light']).pack(fill="x", pady=10)
-        
-        # URL input
-        url_label = ctk.CTkLabel(
-            content,
-            text="URL:",
-            font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
-            text_color=COLORS['text_primary']
-        )
-        url_label.pack(anchor="w", pady=(0, 5))
-        
-        self.url_entry = ctk.CTkEntry(
-            content,
-            height=40,
-            corner_radius=8,
-            fg_color=COLORS['bg_primary'],
-            text_color=COLORS['text_primary'],
-            placeholder_text="https://example.com"
-        )
-        self.url_entry.pack(fill="x", pady=(0, 15))
-        
-        # Folder selection
-        folder_label = ctk.CTkLabel(
-            content,
-            text="Save to:",
-            font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
-            text_color=COLORS['text_primary']
-        )
-        folder_label.pack(anchor="w", pady=(0, 5))
-        
-        folder_frame = ctk.CTkFrame(content, fg_color="transparent")
-        folder_frame.pack(fill="x", pady=(0, 15))
-        
-        self.folder_entry = ctk.CTkEntry(
-            folder_frame,
-            height=40,
-            corner_radius=8,
-            fg_color=COLORS['bg_primary'],
-            text_color=COLORS['text_primary'],
-            placeholder_text="/path/to/save"
-        )
-        self.folder_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        
-        self.browse_btn = SmoothButton(
-            folder_frame,
-            text="Browse",
-            width=80,
-            height=35,
-            command=self.browse_folder
-        )
-        self.browse_btn.pack(side="right")
-        
-        # Download button
-        self.download_btn = SmoothButton(
-            content,
-            text="Download",
-            height=45,
-            fg_color=COLORS['accent_green'],
-            font=ctk.CTkFont(family="Roboto", size=15, weight="bold"),
-            command=self.execute_download
-        )
-        self.download_btn.pack(fill="x", pady=15)
-        
-        # Progress
-        self.download_progress = ctk.CTkProgressBar(
-            content,
-            height=6,
-            corner_radius=3,
-            progress_color=COLORS['accent_blue'],
-            fg_color=COLORS['border_light']
-        )
-        self.download_progress.pack(fill="x", pady=5)
-        self.download_progress.set(0)
-        
-        # Status
-        self.download_status = ctk.CTkLabel(
-            content,
-            text="Ready to download",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
-        )
-        self.download_status.pack(anchor="w", pady=5)
-        
-        # Output
-        self.output_text = ctk.CTkTextbox(
-            content,
-            height=120,
-            corner_radius=10,
-            fg_color=COLORS['bg_primary'],
-            text_color=COLORS['text_secondary'],
-            font=ctk.CTkFont(family="Roboto", size=11)
-        )
-        self.output_text.pack(fill="both", pady=5)
-        self.output_text.insert("1.0", "Output will appear here...")
-        self.output_text.configure(state="disabled")
-        
-        self.set_download_type("website")
-    
-    def set_download_type(self, type_name):
-        self.download_type = type_name
-        
-        for btn in [self.website_btn, self.repo_btn, self.youtube_btn]:
-            btn.configure(
-                fg_color=COLORS['bg_primary'],
-                text_color=COLORS['text_secondary'],
-                font=ctk.CTkFont(family="Roboto", size=12)
-            )
-        
-        if type_name == "website":
-            self.website_btn.configure(fg_color=COLORS['accent_blue'], text_color=COLORS['text_primary'], font=ctk.CTkFont(family="Roboto", size=12, weight="bold"))
-            self.url_entry.configure(placeholder_text="https://example.com")
-            self.download_status.configure(text="Enter website URL to download")
-        elif type_name == "repo":
-            self.repo_btn.configure(fg_color=COLORS['accent_blue'], text_color=COLORS['text_primary'], font=ctk.CTkFont(family="Roboto", size=12, weight="bold"))
-            self.url_entry.configure(placeholder_text="https://github.com/username/repository")
-            self.download_status.configure(text="Enter repository URL to clone")
-        elif type_name == "youtube":
-            self.youtube_btn.configure(fg_color=COLORS['accent_blue'], text_color=COLORS['text_primary'], font=ctk.CTkFont(family="Roboto", size=12, weight="bold"))
-            self.url_entry.configure(placeholder_text="https://youtube.com/watch?v=xxx")
-            self.download_status.configure(text="Enter YouTube video URL to download")
-    
-    def browse_folder(self):
-        folder = filedialog.askdirectory(title="Select save folder")
-        if folder:
-            self.folder_entry.delete(0, "end")
-            self.folder_entry.insert(0, folder)
-    
-    def safe_update_ui(self, widget, **kwargs):
-        """Safely update UI from thread"""
-        def update():
-            try:
-                for key, value in kwargs.items():
-                    if key == "text":
-                        widget.configure(text=value)
-                    elif key == "text_color":
-                        widget.configure(text_color=value)
-            except:
-                pass
-        self.after(0, update)
-    
-    def execute_download(self):
-        url = self.url_entry.get().strip()
-        folder = self.folder_entry.get().strip()
-        
-        if not url:
-            messagebox.showwarning("Missing URL", "Please enter a URL")
-            return
-        
-        if not folder:
-            messagebox.showwarning("Missing Folder", "Please select save folder")
-            return
-        
-        if not os.path.exists(folder):
-            try:
-                os.makedirs(folder)
-            except:
-                messagebox.showerror("Invalid Folder", "Could not create folder")
-                return
-        
-        self.download_btn.configure(state="disabled", text="Downloading...")
-        self.download_status.configure(text="Starting download...", text_color=COLORS['accent_orange'])
-        self.download_progress.set(0.1)
-        self.output_text.configure(state="normal")
-        self.output_text.delete("1.0", "end")
-        
-        if self.download_type == "website":
-            thread = threading.Thread(target=self.download_website, args=(url, folder))
-        elif self.download_type == "repo":
-            thread = threading.Thread(target=self.download_repo, args=(url, folder))
-        elif self.download_type == "youtube":
-            thread = threading.Thread(target=self.download_youtube, args=(url, folder))
-        else:
-            thread = threading.Thread(target=self.download_website, args=(url, folder))
-        
-        thread.daemon = True
-        thread.start()
-    
-    def download_website(self, url, folder):
-        try:
-            self.output_text.insert("end", f"Downloading website: {url}\n")
-            self.output_text.insert("end", f"Save to: {folder}\n\n")
-            self.safe_update_ui(self.download_status, text="Downloading website...", text_color=COLORS['accent_orange'])
-            self.download_progress.set(0.2)
-            
-            try:
-                cmd = f'wget -r -l 5 -np -k -P "{folder}" "{url}"'
-                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
-                
-                if result.returncode == 0:
-                    self.safe_update_ui(self.download_status, text="Website downloaded successfully!", text_color=COLORS['accent_green'])
-                    self.download_progress.set(1.0)
-                    self.output_text.insert("end", "\n--- Download complete! ---\n")
-                    self.output_text.insert("end", f"Website saved to: {folder}\n")
-                    messagebox.showinfo("Success", "Website downloaded successfully!")
-                else:
-                    raise Exception("wget failed")
-                    
-            except:
-                self.output_text.insert("end", "Using requests to download...\n")
-                response = requests.get(url, timeout=30)
-                if response.status_code == 200:
-                    html_file = os.path.join(folder, "index.html")
-                    with open(html_file, 'w', encoding='utf-8') as f:
-                        f.write(response.text)
-                    
-                    self.safe_update_ui(self.download_status, text="Website downloaded successfully!", text_color=COLORS['accent_green'])
-                    self.download_progress.set(1.0)
-                    self.output_text.insert("end", "\n--- Download complete! ---\n")
-                    self.output_text.insert("end", f"Website saved to: {html_file}\n")
-                    messagebox.showinfo("Success", "Website downloaded successfully!")
-                else:
-                    raise Exception(f"Failed to download: {response.status_code}")
-            
-        except Exception as e:
-            self.safe_update_ui(self.download_status, text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
-            self.download_progress.set(0)
-            self.output_text.insert("end", f"\nError: {str(e)}\n")
-            messagebox.showerror("Download Failed", f"Failed to download website:\n{str(e)}")
-        
-        self.download_btn.configure(state="normal", text="Download")
-        self.output_text.configure(state="disabled")
-    
-    def download_repo(self, url, folder):
-        try:
-            self.output_text.insert("end", f"Downloading repository: {url}\n")
-            self.output_text.insert("end", f"Save to: {folder}\n\n")
-            self.safe_update_ui(self.download_status, text="Downloading repository...", text_color=COLORS['accent_orange'])
-            self.download_progress.set(0.2)
-            
-            # Check if it's a GitHub URL
-            if 'github.com' in url:
-                # Extract username and repo
-                parts = url.rstrip('/').split('/')
-                if len(parts) >= 5:
-                    username = parts[-2]
-                    repo = parts[-1]
-                    if repo.endswith('.git'):
-                        repo = repo[:-4]
-                    
-                    # Try git clone first
-                    try:
-                        self.output_text.insert("end", "Trying git clone...\n")
-                        repo_path = os.path.join(folder, repo)
-                        cmd = f'git clone "{url}" "{repo_path}" 2>&1'
-                        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
-                        
-                        if result.returncode == 0:
-                            self.safe_update_ui(self.download_status, text="Repository cloned successfully!", text_color=COLORS['accent_green'])
-                            self.download_progress.set(1.0)
-                            self.output_text.insert("end", "\n--- Clone complete! ---\n")
-                            self.output_text.insert("end", f"Repository saved to: {repo_path}\n")
-                            messagebox.showinfo("Success", "Repository cloned successfully!")
-                            self.download_btn.configure(state="normal", text="Download")
-                            self.output_text.configure(state="disabled")
-                            return
-                        else:
-                            self.output_text.insert("end", f"Git clone failed: {result.stderr}\n")
-                            self.output_text.insert("end", "Trying zip download...\n")
-                    except:
-                        self.output_text.insert("end", "Git clone failed, trying zip...\n")
-                    
-                    # Fallback to zip download
-                    zip_url = f"https://github.com/{username}/{repo}/archive/main.zip"
-                    self.output_text.insert("end", f"Downloading: {zip_url}\n")
-                    
-                    response = requests.get(zip_url, stream=True, timeout=60)
-                    if response.status_code == 200:
-                        total_size = int(response.headers.get('content-length', 0))
-                        downloaded = 0
-                        
-                        zip_path = os.path.join(folder, f"{repo}.zip")
-                        with open(zip_path, 'wb') as f:
-                            for chunk in response.iter_content(chunk_size=8192):
-                                f.write(chunk)
-                                downloaded += len(chunk)
-                                if total_size > 0:
-                                    progress = 0.3 + (0.5 * (downloaded / total_size))
-                                    self.download_progress.set(progress)
-                        
-                        self.output_text.insert("end", "Extracting files...\n")
-                        self.download_progress.set(0.8)
-                        
-                        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                            zip_ref.extractall(folder)
-                        
-                        os.remove(zip_path)
-                        
-                        self.safe_update_ui(self.download_status, text="Repository downloaded successfully!", text_color=COLORS['accent_green'])
-                        self.download_progress.set(1.0)
-                        self.output_text.insert("end", "\n--- Download complete! ---\n")
-                        self.output_text.insert("end", f"Repository saved to: {folder}\n")
-                        messagebox.showinfo("Success", "Repository downloaded successfully!")
-                    else:
-                        raise Exception(f"Failed to download: {response.status_code}")
-                else:
-                    raise Exception("Invalid GitHub URL")
-            else:
-                raise Exception("Not a GitHub URL")
-                
-        except Exception as e:
-            self.safe_update_ui(self.download_status, text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
-            self.download_progress.set(0)
-            self.output_text.insert("end", f"\nError: {str(e)}\n")
-            messagebox.showerror("Download Failed", f"Failed to download repository:\n{str(e)}")
-        
-        self.download_btn.configure(state="normal", text="Download")
-        self.output_text.configure(state="disabled")
-    
-    def download_youtube(self, url, folder):
-        try:
-            self.output_text.insert("end", f"Downloading YouTube video: {url}\n")
-            self.output_text.insert("end", f"Save to: {folder}\n\n")
-            self.safe_update_ui(self.download_status, text="Downloading YouTube video...", text_color=COLORS['accent_orange'])
-            self.download_progress.set(0.1)
-            
-            try:
-                # Check for yt-dlp
-                try:
-                    subprocess.run("yt-dlp --version", shell=True, capture_output=True, check=True)
-                    downloader = "yt-dlp"
-                except:
-                    try:
-                        subprocess.run("youtube-dl --version", shell=True, capture_output=True, check=True)
-                        downloader = "youtube-dl"
-                    except:
-                        raise Exception("Please install: pip install yt-dlp")
-                
-                self.output_text.insert("end", f"Using {downloader}\n")
-                
-                cmd = f'{downloader} -f bestvideo+bestaudio --merge-output-format mp4 -o "{folder}/%(title)s.%(ext)s" "{url}"'
-                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=600)
-                
-                if result.returncode == 0:
-                    self.safe_update_ui(self.download_status, text="YouTube video downloaded successfully!", text_color=COLORS['accent_green'])
-                    self.download_progress.set(1.0)
-                    self.output_text.insert("end", "\n--- Download complete! ---\n")
-                    self.output_text.insert("end", f"Video saved to: {folder}\n")
-                    messagebox.showinfo("Success", "YouTube video downloaded successfully!")
-                else:
-                    self.output_text.insert("end", f"Error: {result.stderr}\n")
-                    raise Exception(f"{downloader} failed")
-                    
-            except Exception as e:
-                self.output_text.insert("end", f"\nError: {str(e)}\n")
-                self.output_text.insert("end", "\nPlease install yt-dlp:\n")
-                self.output_text.insert("end", "  pip install yt-dlp\n")
-                self.safe_update_ui(self.download_status, text="yt-dlp not installed", text_color=COLORS['accent_red'])
-                self.download_progress.set(0)
-                messagebox.showerror("Download Failed", f"Failed to download YouTube video:\n{str(e)}")
-            
-        except Exception as e:
-            self.safe_update_ui(self.download_status, text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
-            self.download_progress.set(0)
-            self.output_text.insert("end", f"\nError: {str(e)}\n")
-            messagebox.showerror("Download Failed", f"Failed to download YouTube video:\n{str(e)}")
-        
-        self.download_btn.configure(state="normal", text="Download")
-        self.output_text.configure(state="disabled")
 
 class GitSetupWindow(ctk.CTkToplevel):
     """Window yo gushiraho Git name, email na SSH key - all inside app"""
@@ -572,7 +127,7 @@ class GitSetupWindow(ctk.CTkToplevel):
         self.parent = parent
         self.git_config = GitConfig()
         self.title("Git Setup")
-        self.geometry("550x650")
+        self.geometry("550x700")
         self.resizable(False, False)
         self.configure(fg_color=COLORS['bg_secondary'])
         
@@ -655,6 +210,34 @@ class GitSetupWindow(ctk.CTkToplevel):
             placeholder_text="your.email@example.com"
         )
         self.email_entry.pack(side="left", fill="x", expand=True, padx=(10, 0))
+        
+        # GitHub Token (optional but helps avoid terminal prompts)
+        token_label = ctk.CTkLabel(
+            content,
+            text="GitHub Token (optional):",
+            font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
+            text_color=COLORS['text_primary']
+        )
+        token_label.pack(anchor="w", pady=(10, 5))
+        
+        token_desc = ctk.CTkLabel(
+            content,
+            text="Create token at: GitHub Settings > Developer settings > Personal access tokens",
+            font=ctk.CTkFont(family="Roboto", size=10),
+            text_color=COLORS['text_secondary'],
+            wraplength=450
+        )
+        token_desc.pack(anchor="w", pady=(0, 5))
+        
+        self.token_entry = ctk.CTkEntry(
+            content,
+            height=35,
+            corner_radius=8,
+            fg_color=COLORS['bg_primary'],
+            text_color=COLORS['text_primary'],
+            placeholder_text="ghp_xxxxxxxxxxxxxxxxxxxx"
+        )
+        self.token_entry.pack(fill="x", pady=(0, 15))
         
         # Step 2: SSH Key
         step2_label = ctk.CTkLabel(
@@ -781,6 +364,8 @@ class GitSetupWindow(ctk.CTkToplevel):
             self.name_entry.insert(0, config['name'])
         if config.get('email'):
             self.email_entry.insert(0, config['email'])
+        if config.get('git_token'):
+            self.token_entry.insert(0, config['git_token'])
         if config.get('ssh_key'):
             self.ssh_key = config['ssh_key']
             self.ssh_generated = True
@@ -899,7 +484,8 @@ class GitSetupWindow(ctk.CTkToplevel):
         self.git_config.set_config(
             self.name_entry.get().strip(),
             self.email_entry.get().strip(),
-            self.ssh_key
+            self.ssh_key,
+            self.token_entry.get().strip()
         )
     
     def next_step(self):
@@ -975,7 +561,7 @@ class GitPushWindow(ctk.CTkToplevel):
             corner_radius=8,
             fg_color=COLORS['bg_primary'],
             text_color=COLORS['text_primary'],
-            placeholder_text="git@github.com:username/repo.git"
+            placeholder_text="git@github.com:username/repo.git OR https://github.com/username/repo.git"
         )
         self.repo_entry.pack(fill="x", pady=(0, 15))
         
@@ -1125,6 +711,9 @@ class GitPushWindow(ctk.CTkToplevel):
         
         def push():
             try:
+                # Get git token if available
+                git_token = self.git_config.get_git_token()
+                
                 # Step 1: Check if git is initialized
                 git_dir = os.path.join(folder, ".git")
                 if not os.path.exists(git_dir):
@@ -1184,32 +773,50 @@ class GitPushWindow(ctk.CTkToplevel):
                 else:
                     self.output_text.insert("end", f"    Note: {result.stderr}\n")
                 
-                # Step 6: Push - Use HTTPS with token or SSH
+                # Step 6: Push - Use SSH or HTTPS with token
                 self.safe_update_ui(self.push_status, text="Pushing to GitHub...", text_color=COLORS['accent_orange'])
                 self.push_progress.set(0.7)
                 self.output_text.insert("end", "[6] Pushing to GitHub...\n")
                 
-                # Set GIT_ASKPASS to avoid terminal prompt
+                # Prepare environment to avoid terminal prompts
                 env = os.environ.copy()
                 env['GIT_ASKPASS'] = 'echo'
-                env['GIT_USERNAME'] = self.name
-                env['GIT_EMAIL'] = self.email
+                env['GIT_AUTHOR_NAME'] = self.name
+                env['GIT_AUTHOR_EMAIL'] = self.email
+                env['GIT_COMMITTER_NAME'] = self.name
+                env['GIT_COMMITTER_EMAIL'] = self.email
                 
-                push_cmd = "git push -u origin main"
-                if self.force_push.get():
-                    push_cmd = "git push -u origin main --force"
-                    self.output_text.insert("end", "    Using --force\n")
-                elif self.accept_push.get():
-                    push_cmd = "git push -u origin main --force-with-lease"
-                    self.output_text.insert("end", "    Using --force-with-lease\n")
+                # If using HTTPS and token provided, inject credentials
+                if 'https://' in repo_url and git_token:
+                    # Modify URL to include token
+                    repo_url_with_token = repo_url.replace('https://', f'https://{git_token}@')
+                    push_cmd = f"git push -u origin main"
+                    if self.force_push.get():
+                        push_cmd = f"git push -u origin main --force"
+                    elif self.accept_push.get():
+                        push_cmd = f"git push -u origin main --force-with-lease"
+                    
+                    # Use the URL with token for push
+                    cmd = f'cd "{folder}" && git remote set-url origin {repo_url_with_token} && {push_cmd}'
+                    self.output_text.insert("end", f"    Using HTTPS with token\n")
                 else:
-                    self.output_text.insert("end", "    Using normal push\n")
+                    # Use SSH (no token needed)
+                    push_cmd = "git push -u origin main"
+                    if self.force_push.get():
+                        push_cmd = "git push -u origin main --force"
+                        self.output_text.insert("end", "    Using --force\n")
+                    elif self.accept_push.get():
+                        push_cmd = "git push -u origin main --force-with-lease"
+                        self.output_text.insert("end", "    Using --force-with-lease\n")
+                    else:
+                        self.output_text.insert("end", "    Using normal push (SSH)\n")
+                    
+                    cmd = f'cd "{folder}" && {push_cmd}'
                 
                 self.output_text.insert("end", f"    Command: {push_cmd}\n")
                 
-                # Run git push with environment variables
                 result = subprocess.run(
-                    f'cd "{folder}" && {push_cmd}',
+                    cmd,
                     shell=True,
                     capture_output=True,
                     text=True,
@@ -1275,7 +882,6 @@ class App(ctk.CTk):
         self.original_bg_image = None
         self.git_setup_window = None
         self.git_push_window = None
-        self.download_window = None
         self.git_config = GitConfig()
         
         # Main container
@@ -1618,33 +1224,8 @@ class App(ctk.CTk):
         self.git_progress.pack()
         self.git_progress.set(0)
         
-        # Download Card
-        self.download_blur_img = make_blur_crop((430, 180, 690, 580))
-        self.download_card = ctk.CTkFrame(self.bg_frame, corner_radius=20, border_width=1, border_color=COLORS['border_light'], fg_color=COLORS['bg_secondary'])
-        self.download_card.place(relx=0.68, rely=0.5, anchor="center", relwidth=0.30, relheight=0.55)
-        
-        ctk.CTkFrame(self.download_card, fg_color=COLORS['bg_secondary'], corner_radius=20).place(x=0, y=0, relwidth=1, relheight=1)
-        
-        try:
-            if os.path.exists("ytb.png"):
-                download_pil = Image.open("ytb.png")
-                self.download_photo = ctk.CTkImage(light_image=download_pil, dark_image=download_pil, size=(80, 80))
-            else:
-                self.download_photo = None
-        except:
-            self.download_photo = None
-        
-        self.download_content = ctk.CTkFrame(self.download_card, fg_color="transparent")
-        self.download_content.place(relx=0.5, rely=0.5, anchor="center")
-        
-        if self.download_photo:
-            ctk.CTkLabel(self.download_content, image=self.download_photo, text="").pack(pady=(0, 15))
-        ctk.CTkLabel(self.download_content, text="Download", font=ctk.CTkFont(family="Roboto", size=18, weight="bold"), text_color=COLORS['text_primary']).pack(pady=(0, 5))
-        ctk.CTkLabel(self.download_content, text="Download website, repo or YouTube", font=ctk.CTkFont(family="Roboto", size=12), text_color=COLORS['text_secondary']).pack(pady=(0, 20))
-        SmoothButton(self.download_content, text="Start Download", width=160, height=40, fg_color=COLORS['accent_green'], command=self.start_download).pack(pady=(0, 15))
-        self.download_progress = ctk.CTkProgressBar(self.download_content, width=160, height=4, corner_radius=2, progress_color=COLORS['accent_green'], fg_color=COLORS['border_light'])
-        self.download_progress.pack()
-        self.download_progress.set(0)
+        # Download Card - Removed, now only Git Push
+        # Status bar moved to bottom
         
         # --- STATUS BAR ---
         self.status_bar = ctk.CTkFrame(self.main_container, fg_color=COLORS['bg_secondary'], height=35, corner_radius=0)
@@ -1658,7 +1239,7 @@ class App(ctk.CTk):
         
         self.shortcuts_label = ctk.CTkLabel(
             self.status_bar,
-            text="Ctrl+G: Git | Ctrl+D: Download | Ctrl+S: Settings",
+            text="Ctrl+G: Git | Ctrl+S: Settings",
             font=ctk.CTkFont(family="Roboto", size=10),
             text_color=COLORS['text_secondary']
         )
@@ -1667,18 +1248,10 @@ class App(ctk.CTk):
         # Shortcuts
         self.bind("<Control-q>", lambda e: self.quit())
         self.bind("<Control-g>", lambda e: self.start_git_setup())
-        self.bind("<Control-d>", lambda e: self.start_download())
         self.bind("<Control-s>", lambda e: self.toggle_settings())
         
         # --- AUTO UPDATE ON START ---
         self.after(1500, self.auto_check_update)
-    
-    def start_download(self):
-        if self.download_window is None or not self.download_window.winfo_exists():
-            self.download_window = DownloadWindow(self)
-            self.status_label.configure(text="Download window opened")
-        else:
-            self.download_window.focus()
     
     def start_git_setup(self):
         # Check if git is installed
@@ -1811,7 +1384,7 @@ class App(ctk.CTk):
                     shutil.copy2(os.path.join(current_dir, 'main.py'), backup_path)
                     shutil.copy2(main_file, os.path.join(current_dir, 'main.py'))
                     
-                    for file in ['app.jpeg', 'image_0.png', 'ytb.png']:
+                    for file in ['app.jpeg', 'image_0.png']:
                         src = os.path.join(extracted_dir, file)
                         if os.path.exists(src):
                             shutil.copy2(src, os.path.join(current_dir, file))
