@@ -38,10 +38,13 @@ COLORS = {
 class SmoothButton(ctk.CTkButton):
     """Button isa na macOS/Deepin ihora smooth"""
     def __init__(self, master, **kwargs):
+        # Remove conflicting arguments
         if 'fg_color' in kwargs:
             kwargs.pop('fg_color')
         if 'hover_color' in kwargs:
             kwargs.pop('hover_color')
+        if 'corner_radius' in kwargs:
+            kwargs.pop('corner_radius')
         if 'font' not in kwargs:
             kwargs['font'] = ctk.CTkFont(family="Roboto", size=13, weight="normal")
             
@@ -302,7 +305,7 @@ class GitSetupWindow(ctk.CTkToplevel):
                 key_path = os.path.join(ssh_dir, "id_rsa")
                 
                 # Check if key exists
-                if os.path.exists(key_path):
+                if os.path.exists(key_path + ".pub"):
                     # Read existing key
                     with open(f"{key_path}.pub", 'r') as f:
                         self.ssh_key = f.read().strip()
@@ -868,4 +871,470 @@ class App(ctk.CTk):
         )
         self.update_status_icon.pack(side="left", padx=(0, 12))
         
-        status
+        status_text_frame = ctk.CTkFrame(status_row, fg_color="transparent")
+        status_text_frame.pack(side="left", fill="x", expand=True)
+        
+        self.update_status_title = ctk.CTkLabel(
+            status_text_frame,
+            text="Checking for updates...",
+            font=ctk.CTkFont(family="Roboto", size=14, weight="bold"),
+            text_color=COLORS['text_primary']
+        )
+        self.update_status_title.pack(anchor="w")
+        
+        self.update_status_desc = ctk.CTkLabel(
+            status_text_frame,
+            text="Please wait while we check for the latest version",
+            font=ctk.CTkFont(family="Roboto", size=12),
+            text_color=COLORS['text_secondary']
+        )
+        self.update_status_desc.pack(anchor="w")
+        
+        # Commit message card
+        self.commit_card = ctk.CTkFrame(status_card, fg_color=COLORS['bg_secondary'], corner_radius=10)
+        self.commit_card.pack(fill="x", padx=18, pady=(0, 10))
+        self.commit_card.pack_forget()
+        
+        commit_header = ctk.CTkFrame(self.commit_card, fg_color="transparent")
+        commit_header.pack(fill="x", padx=12, pady=8)
+        
+        ctk.CTkLabel(
+            commit_header,
+            text="[Message]",
+            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+            text_color=COLORS['text_secondary']
+        ).pack(side="left", padx=(0, 8))
+        
+        ctk.CTkLabel(
+            commit_header,
+            text="Update Reason",
+            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+            text_color=COLORS['text_secondary']
+        ).pack(side="left")
+        
+        self.commit_message_label = ctk.CTkLabel(
+            self.commit_card,
+            text="",
+            font=ctk.CTkFont(family="Roboto", size=12),
+            text_color=COLORS['text_primary'],
+            wraplength=400
+        )
+        self.commit_message_label.pack(anchor="w", padx=18, pady=(0, 8))
+        
+        # Progress bar
+        self.update_progress = ctk.CTkProgressBar(
+            update_section,
+            height=8,
+            corner_radius=4,
+            progress_color=COLORS['accent_blue'],
+            fg_color=COLORS['border_light']
+        )
+        self.update_progress.pack(pady=(10, 15), fill="x")
+        self.update_progress.set(0)
+        
+        # Restart button - using CTkButton directly to avoid conflict
+        self.restart_btn = ctk.CTkButton(
+            update_section,
+            text="Restart & Update",
+            height=48,
+            corner_radius=14,
+            fg_color=COLORS['accent_green'],
+            hover_color='#2a9d4d',
+            font=ctk.CTkFont(family="Roboto", size=15, weight="bold"),
+            command=self.restart_app
+        )
+        self.restart_btn.pack(fill="x", pady=5)
+        self.restart_btn.configure(state="disabled")
+        
+        # Separator
+        ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=25, pady=5)
+        
+        # --- ABOUT SECTION ---
+        about_section = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
+        about_section.pack(fill="x", padx=25, pady=15)
+        
+        about_header = ctk.CTkFrame(about_section, fg_color="transparent")
+        about_header.pack(fill="x", pady=(0, 10))
+        
+        ctk.CTkLabel(
+            about_header,
+            text="About",
+            font=ctk.CTkFont(family="Roboto", size=17, weight="bold"),
+            text_color=COLORS['text_primary']
+        ).pack(side="left")
+        
+        about_card = ctk.CTkFrame(about_section, fg_color=COLORS['bg_primary'], corner_radius=14)
+        about_card.pack(fill="x", pady=5)
+        
+        about_content = ctk.CTkFrame(about_card, fg_color="transparent")
+        about_content.pack(fill="x", padx=18, pady=12)
+        
+        ctk.CTkLabel(
+            about_content,
+            text="Git & Download Panel Pro",
+            font=ctk.CTkFont(family="Roboto", size=15, weight="bold"),
+            text_color=COLORS['text_primary']
+        ).pack(anchor="w")
+        
+        ctk.CTkLabel(
+            about_content,
+            text="Version 2.0.0",
+            font=ctk.CTkFont(family="Roboto", size=12),
+            text_color=COLORS['text_secondary']
+        ).pack(anchor="w")
+        
+        ctk.CTkFrame(about_content, height=1, fg_color=COLORS['border_light']).pack(fill="x", pady=8)
+        
+        # Developer
+        dev_frame = ctk.CTkFrame(about_content, fg_color="transparent")
+        dev_frame.pack(fill="x", pady=3)
+        
+        ctk.CTkLabel(
+            dev_frame,
+            text="Developer: Niyibizi Kevin",
+            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+            text_color=COLORS['accent_blue']
+        ).pack(anchor="w")
+        
+        # Website
+        website_frame = ctk.CTkFrame(about_content, fg_color="transparent")
+        website_frame.pack(fill="x", pady=3)
+        
+        website_link = ctk.CTkLabel(
+            website_frame,
+            text="niyibizi_kevin.netlify.app",
+            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+            text_color=COLORS['accent_blue'],
+            cursor="hand2"
+        )
+        website_link.pack(side="left")
+        website_link.bind("<Button-1>", lambda e: self.open_website())
+        
+        # Year
+        year_frame = ctk.CTkFrame(about_content, fg_color="transparent")
+        year_frame.pack(fill="x", pady=3)
+        
+        ctk.CTkLabel(
+            year_frame,
+            text="2024",
+            font=ctk.CTkFont(family="Roboto", size=12),
+            text_color=COLORS['text_secondary']
+        ).pack(anchor="w")
+        
+        # --- BACKGROUND IMAGE ---
+        self.bg_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        self.bg_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        
+        self.bg_image_label = ctk.CTkLabel(self.bg_frame, text="")
+        self.bg_image_label.place(x=0, y=0, relwidth=1, relheight=1)
+        
+        # Load background
+        bg_loaded = False
+        try:
+            if os.path.exists("app.jpeg"):
+                self.original_bg_image = Image.open("app.jpeg").resize((860, 700), Image.Resampling.LANCZOS)
+                self.bg_photo = ctk.CTkImage(light_image=self.original_bg_image, dark_image=self.original_bg_image, size=(860, 700))
+                self.bg_image_label.configure(image=self.bg_photo)
+                bg_loaded = True
+        except:
+            pass
+        
+        if not bg_loaded:
+            self.original_bg_image = Image.new("RGB", (860, 700), color=COLORS['bg_primary'])
+            self.bg_frame.configure(fg_color=COLORS['bg_primary'])
+        
+        def make_blur_crop(box):
+            if self.original_bg_image is None:
+                return None
+            try:
+                crop = self.original_bg_image.crop(box)
+                blurred = crop.filter(ImageFilter.GaussianBlur(25))
+                enhancer = ImageEnhance.Brightness(blurred)
+                darkened = enhancer.enhance(0.4)
+                return ctk.CTkImage(light_image=darkened, dark_image=darkened, size=(box[2]-box[0], box[3]-box[1]))
+            except:
+                return None
+        
+        # --- CARDS ---
+        # Git Card
+        self.git_blur_img = make_blur_crop((170, 180, 430, 580))
+        self.git_card = ctk.CTkFrame(self.bg_frame, corner_radius=20, border_width=1, border_color=COLORS['border_light'], fg_color=COLORS['bg_secondary'])
+        self.git_card.place(relx=0.32, rely=0.5, anchor="center", relwidth=0.30, relheight=0.55)
+        
+        ctk.CTkFrame(self.git_card, fg_color=COLORS['bg_secondary'], corner_radius=20).place(x=0, y=0, relwidth=1, relheight=1)
+        
+        try:
+            if os.path.exists("image_0.png"):
+                git_pil = Image.open("image_0.png")
+                self.git_photo = ctk.CTkImage(light_image=git_pil, dark_image=git_pil, size=(80, 80))
+            else:
+                self.git_photo = None
+        except:
+            self.git_photo = None
+        
+        self.git_content = ctk.CTkFrame(self.git_card, fg_color="transparent")
+        self.git_content.place(relx=0.5, rely=0.5, anchor="center")
+        
+        if self.git_photo:
+            ctk.CTkLabel(self.git_content, image=self.git_photo, text="").pack(pady=(0, 15))
+        ctk.CTkLabel(self.git_content, text="Git Push", font=ctk.CTkFont(family="Roboto", size=18, weight="bold"), text_color=COLORS['text_primary']).pack(pady=(0, 5))
+        ctk.CTkLabel(self.git_content, text="Push changes to remote repository", font=ctk.CTkFont(family="Roboto", size=12), text_color=COLORS['text_secondary']).pack(pady=(0, 20))
+        SmoothButton(self.git_content, text="Execute Push", width=160, height=40, command=self.start_git_setup).pack(pady=(0, 15))
+        self.git_progress = ctk.CTkProgressBar(self.git_content, width=160, height=4, corner_radius=2, progress_color=COLORS['accent_blue'], fg_color=COLORS['border_light'])
+        self.git_progress.pack()
+        self.git_progress.set(0)
+        
+        # Download Card
+        self.download_blur_img = make_blur_crop((430, 180, 690, 580))
+        self.download_card = ctk.CTkFrame(self.bg_frame, corner_radius=20, border_width=1, border_color=COLORS['border_light'], fg_color=COLORS['bg_secondary'])
+        self.download_card.place(relx=0.68, rely=0.5, anchor="center", relwidth=0.30, relheight=0.55)
+        
+        ctk.CTkFrame(self.download_card, fg_color=COLORS['bg_secondary'], corner_radius=20).place(x=0, y=0, relwidth=1, relheight=1)
+        
+        try:
+            if os.path.exists("ytb.png"):
+                download_pil = Image.open("ytb.png")
+                self.download_photo = ctk.CTkImage(light_image=download_pil, dark_image=download_pil, size=(80, 80))
+            else:
+                self.download_photo = None
+        except:
+            self.download_photo = None
+        
+        self.download_content = ctk.CTkFrame(self.download_card, fg_color="transparent")
+        self.download_content.place(relx=0.5, rely=0.5, anchor="center")
+        
+        if self.download_photo:
+            ctk.CTkLabel(self.download_content, image=self.download_photo, text="").pack(pady=(0, 15))
+        ctk.CTkLabel(self.download_content, text="Download", font=ctk.CTkFont(family="Roboto", size=18, weight="bold"), text_color=COLORS['text_primary']).pack(pady=(0, 5))
+        ctk.CTkLabel(self.download_content, text="Download website or repository", font=ctk.CTkFont(family="Roboto", size=12), text_color=COLORS['text_secondary']).pack(pady=(0, 20))
+        SmoothButton(self.download_content, text="Start Download", width=160, height=40, fg_color=COLORS['accent_green'], command=self.on_download_clicked).pack(pady=(0, 15))
+        self.download_progress = ctk.CTkProgressBar(self.download_content, width=160, height=4, corner_radius=2, progress_color=COLORS['accent_green'], fg_color=COLORS['border_light'])
+        self.download_progress.pack()
+        self.download_progress.set(0)
+        
+        # --- STATUS BAR ---
+        self.status_bar = ctk.CTkFrame(self.main_container, fg_color=COLORS['bg_secondary'], height=35, corner_radius=0)
+        self.status_bar.pack(fill="x", side="bottom")
+        
+        self.status_dot = ctk.CTkLabel(self.status_bar, text="*", font=ctk.CTkFont(family="Roboto", size=10), text_color=COLORS['accent_green'])
+        self.status_dot.pack(side="left", padx=(20, 8))
+        
+        self.status_label = ctk.CTkLabel(self.status_bar, text="Ready", font=ctk.CTkFont(family="Roboto", size=12), text_color=COLORS['text_secondary'])
+        self.status_label.pack(side="left")
+        
+        self.shortcuts_label = ctk.CTkLabel(
+            self.status_bar,
+            text="Ctrl+G: Git | Ctrl+D: Download | Ctrl+S: Settings",
+            font=ctk.CTkFont(family="Roboto", size=10),
+            text_color=COLORS['text_secondary']
+        )
+        self.shortcuts_label.pack(side="right", padx=20)
+        
+        # Shortcuts
+        self.bind("<Control-q>", lambda e: self.quit())
+        self.bind("<Control-g>", lambda e: self.start_git_setup())
+        self.bind("<Control-d>", lambda e: self.on_download_clicked())
+        self.bind("<Control-s>", lambda e: self.toggle_settings())
+        
+        # --- AUTO UPDATE ON START ---
+        self.after(1500, self.auto_check_update)
+    
+    def start_git_setup(self):
+        """Start Git setup process"""
+        # Check if git is installed
+        try:
+            subprocess.run("git --version", shell=True, capture_output=True, check=True)
+        except:
+            messagebox.showerror("Git Not Found", "Git is not installed. Please install Git first.")
+            return
+        
+        # Check if setup already done
+        config_file = os.path.join(os.path.expanduser("~"), ".gitpush_config.json")
+        if os.path.exists(config_file):
+            try:
+                with open(config_file, 'r') as f:
+                    config = json.load(f)
+                    if config.get('name') and config.get('email') and config.get('ssh_key'):
+                        # Setup already done, go directly to push
+                        self.show_push_window(config['name'], config['email'])
+                        return
+            except:
+                pass
+        
+        # Open setup window
+        if self.git_setup_window is None or not self.git_setup_window.winfo_exists():
+            self.git_setup_window = GitSetupWindow(self)
+            self.status_label.configure(text="Git setup started")
+        else:
+            self.git_setup_window.focus()
+    
+    def show_push_window(self, name, email):
+        """Show push window"""
+        if self.git_push_window is None or not self.git_push_window.winfo_exists():
+            self.git_push_window = GitPushWindow(self, name, email)
+            self.status_label.configure(text="Git push window opened")
+        else:
+            self.git_push_window.focus()
+    
+    def open_website(self):
+        webbrowser.open("https://niyibizi_kevin.netlify.app")
+        self.status_label.configure(text="Opening developer website...")
+    
+    def toggle_settings(self):
+        if self.settings_frame.winfo_ismapped():
+            self.settings_frame.pack_forget()
+            self.status_label.configure(text="Settings closed")
+            self.geometry("900x750")
+        else:
+            self.settings_frame.pack(fill="x", padx=30, pady=(0, 15), before=self.bg_frame)
+            self.status_label.configure(text="Settings opened")
+            self.geometry("900x880")
+    
+    def show_commit_message(self, message):
+        self.commit_card.pack(fill="x", padx=18, pady=(0, 10))
+        self.commit_message_label.configure(text=message)
+    
+    def hide_commit_message(self):
+        self.commit_card.pack_forget()
+    
+    def update_ui_status(self, icon, title, desc, progress, color=COLORS['accent_orange']):
+        self.update_status_icon.configure(text=icon, text_color=color)
+        self.update_status_title.configure(text=title)
+        self.update_status_desc.configure(text=desc)
+        self.update_progress.set(progress)
+    
+    def auto_check_update(self):
+        self.update_ui_status("[i]", "Checking for updates...", "Please wait while we check for the latest version", 0.1)
+        self.status_label.configure(text="Checking for updates...")
+        self.hide_commit_message()
+        
+        def check():
+            try:
+                response = requests.get(GITHUB_API_URL, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    self.update_available = True
+                    self.update_version = data['sha'][:7]
+                    self.update_commit_message = data['commit']['message']
+                    
+                    self.show_commit_message(self.update_commit_message)
+                    self.update_ui_status("[!]", "Update available!", "Downloading update automatically...", 0.2, COLORS['accent_blue'])
+                    self.download_update_auto()
+                else:
+                    self.update_ui_status("[OK]", "No updates available", "You are using the latest version", 1.0, COLORS['accent_green'])
+                    self.status_label.configure(text="Ready - Latest version")
+                    self.restart_btn.configure(state="disabled")
+                    self.hide_commit_message()
+                    
+            except Exception as e:
+                self.update_ui_status("[X]", "Could not check updates", "Check your internet connection", 0, COLORS['accent_red'])
+                self.status_label.configure(text="Ready - Update check failed")
+                self.hide_commit_message()
+        
+        thread = threading.Thread(target=check)
+        thread.daemon = True
+        thread.start()
+    
+    def download_update_auto(self):
+        def download():
+            try:
+                response = requests.get(GITHUB_ZIP_URL, stream=True, timeout=30)
+                if response.status_code != 200:
+                    raise Exception("Failed to download update")
+                
+                self.update_ui_status("[D]", "Downloading update...", "Please wait while we download the latest version", 0.3)
+                
+                temp_dir = tempfile.mkdtemp()
+                zip_path = os.path.join(temp_dir, "update.zip")
+                
+                total_size = int(response.headers.get('content-length', 0))
+                downloaded = 0
+                
+                with open(zip_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total_size > 0:
+                            progress = 0.3 + (0.4 * (downloaded / total_size))
+                            self.update_progress.set(progress)
+                
+                self.update_ui_status("[E]", "Extracting files...", "Preparing update for installation", 0.7)
+                
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
+                
+                extracted_dir = None
+                for item in os.listdir(temp_dir):
+                    if item.startswith('gitpushand-dawnlaods-main'):
+                        extracted_dir = os.path.join(temp_dir, item)
+                        break
+                
+                if not extracted_dir:
+                    raise Exception("Could not find extracted files")
+                
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                
+                main_file = os.path.join(extracted_dir, 'main.py')
+                if os.path.exists(main_file):
+                    backup_path = os.path.join(current_dir, 'main_backup.py')
+                    shutil.copy2(os.path.join(current_dir, 'main.py'), backup_path)
+                    shutil.copy2(main_file, os.path.join(current_dir, 'main.py'))
+                    
+                    for file in ['app.jpeg', 'image_0.png', 'ytb.png']:
+                        src = os.path.join(extracted_dir, file)
+                        if os.path.exists(src):
+                            shutil.copy2(src, os.path.join(current_dir, file))
+                
+                shutil.rmtree(temp_dir)
+                
+                self.update_ui_status("[OK]", "Update ready!", f"Version {self.update_version} is ready to install", 1.0, COLORS['accent_green'])
+                self.status_label.configure(text="Update ready! Restart to apply")
+                self.restart_btn.configure(state="normal")
+                
+            except Exception as e:
+                self.update_ui_status("[X]", "Update failed", f"Error: {str(e)[:50]}", 0, COLORS['accent_red'])
+                self.status_label.configure(text="Update failed")
+                self.hide_commit_message()
+        
+        thread = threading.Thread(target=download)
+        thread.daemon = True
+        thread.start()
+    
+    def restart_app(self):
+        if messagebox.askyesno("Restart", "Restart app to apply update?"):
+            python = sys.executable
+            os.execl(python, python, *sys.argv)
+    
+    def animate_progress(self, progress_bar, target, duration=1000):
+        if self.animation_running:
+            return
+        self.animation_running = True
+        steps = 50
+        current = progress_bar.get()
+        step_size = (target - current) / steps
+        def update_step(step):
+            nonlocal current
+            if step < steps:
+                current += step_size
+                progress_bar.set(current)
+                self.after(duration // steps, lambda: update_step(step + 1))
+            else:
+                progress_bar.set(target)
+                self.animation_running = False
+        update_step(0)
+    
+    def on_download_clicked(self):
+        self.status_label.configure(text="Download in progress...")
+        self.status_dot.configure(text_color=COLORS['accent_orange'])
+        self.animate_progress(self.download_progress, 1.0, 2000)
+        def complete():
+            self.status_label.configure(text="Download completed!")
+            self.status_dot.configure(text_color=COLORS['accent_green'])
+            messagebox.showinfo("Success", "Download completed successfully!")
+        self.after(2000, complete)
+
+if __name__ == "__main__":
+    ctk.set_appearance_mode("Dark")
+    ctk.set_default_color_theme("dark-blue")
+    app = App()
+    app.mainloop()
