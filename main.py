@@ -10,6 +10,7 @@ import tempfile
 import zipfile
 from tkinter import messagebox
 from datetime import datetime
+import webbrowser
 
 # --- GIT UPDATE FUNCTIONS ---
 GITHUB_REPO = "rwandaxcode/gitpushand-dawnlaods"
@@ -346,7 +347,7 @@ class App(ctk.CTk):
         # Separator
         ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=20, pady=10)
         
-        # --- ABOUT SECTION ---
+        # --- ABOUT SECTION (Updated) ---
         about_section = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
         about_section.pack(fill="x", padx=25, pady=10)
         
@@ -374,12 +375,14 @@ class App(ctk.CTk):
             text_color=COLORS['text_secondary']
         ).pack(anchor="w", padx=15, pady=3)
         
-        ctk.CTkLabel(
+        # Developer section with bold color
+        developer_label = ctk.CTkLabel(
             about_frame,
-            text="Developer: Kevin",
-            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+            text="Developed by: Niyibizi Kevin",
+            font=ctk.CTkFont(family="Roboto", size=13, weight="bold"),
             text_color=COLORS['accent_blue']
-        ).pack(anchor="w", padx=15, pady=3)
+        )
+        developer_label.pack(anchor="w", padx=15, pady=3)
         
         ctk.CTkLabel(
             about_frame,
@@ -394,6 +397,33 @@ class App(ctk.CTk):
             font=ctk.CTkFont(family="Roboto", size=11),
             text_color=COLORS['text_secondary']
         ).pack(anchor="w", padx=15, pady=3)
+        
+        # Website link (clickable)
+        website_frame = ctk.CTkFrame(about_frame, fg_color="transparent")
+        website_frame.pack(anchor="w", padx=15, pady=5)
+        
+        website_label = ctk.CTkLabel(
+            website_frame,
+            text="Visit: niyibizi_kevin.netlify.app",
+            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+            text_color=COLORS['accent_blue'],
+            cursor="hand2"
+        )
+        website_label.pack(side="left")
+        
+        # Open link button
+        visit_btn = ctk.CTkButton(
+            website_frame,
+            text="Open",
+            width=60,
+            height=25,
+            corner_radius=8,
+            fg_color=COLORS['accent_blue'],
+            hover_color='#0a7eff',
+            font=ctk.CTkFont(family="Roboto", size=10, weight="bold"),
+            command=self.open_website
+        )
+        visit_btn.pack(side="left", padx=(10, 0))
         
         # Separator
         ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=20, pady=10)
@@ -496,6 +526,11 @@ class App(ctk.CTk):
         self.bind("<Control-g>", lambda e: self.on_git_push_clicked(None))
         self.bind("<Control-d>", lambda e: self.on_download_clicked(None))
         self.bind("<Control-s>", lambda e: self.toggle_settings())
+    
+    def open_website(self):
+        """Open developer website"""
+        webbrowser.open("https://niyibizi_kevin.netlify.app")
+        self.status_label.configure(text="Opening developer website...")
     
     def toggle_settings(self):
         """Toggle settings panel visibility"""
