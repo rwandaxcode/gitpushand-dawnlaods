@@ -311,43 +311,7 @@ class App(ctk.CTk):
         # Separator
         ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=20, pady=10)
         
-        # --- THEME SECTION ---
-        theme_section = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
-        theme_section.pack(fill="x", padx=25, pady=10)
-        
-        ctk.CTkLabel(
-            theme_section,
-            text="Theme Settings",
-            font=ctk.CTkFont(family="Roboto", size=16, weight="bold"),
-            text_color=COLORS['text_primary']
-        ).pack(anchor="w", pady=(0, 5))
-        
-        theme_frame = ctk.CTkFrame(theme_section, fg_color="transparent")
-        theme_frame.pack(fill="x", pady=5)
-        
-        ctk.CTkLabel(
-            theme_frame,
-            text="Theme:",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
-        ).pack(side="left", padx=(0, 10))
-        
-        self.theme_var = ctk.StringVar(value="Dark")
-        theme_menu = ctk.CTkOptionMenu(
-            theme_frame,
-            values=["Dark", "Light", "System"],
-            variable=self.theme_var,
-            fg_color=COLORS['bg_primary'],
-            button_color=COLORS['accent_blue'],
-            font=ctk.CTkFont(family="Roboto", size=12),
-            command=self.change_theme
-        )
-        theme_menu.pack(side="left")
-        
-        # Separator
-        ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=20, pady=10)
-        
-        # --- ABOUT SECTION (Updated) ---
+        # --- ABOUT SECTION (Without theme settings) ---
         about_section = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
         about_section.pack(fill="x", padx=25, pady=10)
         
@@ -424,9 +388,6 @@ class App(ctk.CTk):
             command=self.open_website
         )
         visit_btn.pack(side="left", padx=(10, 0))
-        
-        # Separator
-        ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=20, pady=10)
         
         # --- BACKGROUND IMAGE ---
         self.bg_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
@@ -543,11 +504,6 @@ class App(ctk.CTk):
             self.status_label.configure(text="Settings opened")
             self.geometry("900x820")
             self.check_for_updates()
-    
-    def change_theme(self, value):
-        """Change app theme"""
-        ctk.set_appearance_mode(value.lower())
-        self.status_label.configure(text=f"Theme changed to {value}")
     
     def check_for_updates(self):
         """Check for updates from GitHub"""
