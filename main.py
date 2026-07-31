@@ -2,15 +2,13 @@ import customtkinter as ctk
 from PIL import Image, ImageFilter, ImageEnhance
 import os
 import sys
-import subprocess
 import requests
-import json
 import shutil
 import tempfile
 import zipfile
 from tkinter import messagebox
-from datetime import datetime
 import webbrowser
+import threading
 
 # --- GIT UPDATE FUNCTIONS ---
 GITHUB_REPO = "rwandaxcode/gitpushand-dawnlaods"
@@ -82,9 +80,8 @@ class App(ctk.CTk):
         # Variables
         self.current_status = "Ready"
         self.animation_running = False
-        self.update_checking = False
         self.update_available = False
-        self.commit_info = None
+        self.update_version = ""
         self.original_bg_image = None
         
         # Main container
@@ -164,7 +161,7 @@ class App(ctk.CTk):
         
         ctk.CTkLabel(
             settings_header,
-            text="Settings & Updates",
+            text="Settings",
             font=ctk.CTkFont(family="Roboto", size=18, weight="bold"),
             text_color=COLORS['text_primary']
         ).pack(side="left")
@@ -186,7 +183,7 @@ class App(ctk.CTk):
         # Separator
         ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=20, pady=5)
         
-        # --- UPDATE SECTION ---
+        # --- UPDATE SECTION (Simplified - only progress and restart) ---
         update_section = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
         update_section.pack(fill="x", padx=25, pady=10)
         
@@ -197,49 +194,17 @@ class App(ctk.CTk):
             text_color=COLORS['text_primary']
         ).pack(anchor="w", pady=(0, 5))
         
-        # Version info frame
-        version_frame = ctk.CTkFrame(update_section, fg_color=COLORS['bg_primary'], corner_radius=10)
-        version_frame.pack(fill="x", pady=5)
+        # Update info frame
+        update_info_frame = ctk.CTkFrame(update_section, fg_color=COLORS['bg_primary'], corner_radius=10)
+        update_info_frame.pack(fill="x", pady=5)
         
-        self.current_version_label = ctk.CTkLabel(
-            version_frame,
-            text="Current: v2.0.0",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
-        )
-        self.current_version_label.pack(anchor="w", padx=15, pady=5)
-        
-        self.latest_version_label = ctk.CTkLabel(
-            version_frame,
+        self.update_status_label = ctk.CTkLabel(
+            update_info_frame,
             text="Checking for updates...",
             font=ctk.CTkFont(family="Roboto", size=12),
             text_color=COLORS['text_secondary']
         )
-        self.latest_version_label.pack(anchor="w", padx=15, pady=(0, 5))
-        
-        # Buttons frame
-        buttons_frame = ctk.CTkFrame(update_section, fg_color="transparent")
-        buttons_frame.pack(fill="x", pady=10)
-        
-        self.check_btn = SmoothButton(
-            buttons_frame,
-            text="Check for Updates",
-            width=160,
-            height=35,
-            command=self.check_for_updates
-        )
-        self.check_btn.pack(side="left", padx=(0, 10))
-        
-        self.update_btn = SmoothButton(
-            buttons_frame,
-            text="Download & Install",
-            width=160,
-            height=35,
-            fg_color=COLORS['accent_green'],
-            command=self.download_update
-        )
-        self.update_btn.pack(side="left")
-        self.update_btn.configure(state="disabled")
+        self.update_status_label.pack(anchor="w", padx=15, pady=5)
         
         # Update progress
         self.update_progress = ctk.CTkProgressBar(
@@ -250,68 +215,25 @@ class App(ctk.CTk):
             progress_color=COLORS['accent_blue'],
             fg_color=COLORS['border_light']
         )
-        self.update_progress.pack(pady=(5, 5))
+        self.update_progress.pack(pady=(10, 5))
         self.update_progress.set(0)
         
-        # Update status
-        self.update_status = ctk.CTkLabel(
+        # Update button (only for restart when update is ready)
+        self.restart_btn = SmoothButton(
             update_section,
-            text="Press 'Check for Updates' to see if a new version is available",
-            font=ctk.CTkFont(family="Roboto", size=11),
-            text_color=COLORS['text_secondary']
+            text="Restart & Update",
+            width=180,
+            height=35,
+            fg_color=COLORS['accent_green'],
+            command=self.restart_app
         )
-        self.update_status.pack(anchor="w")
+        self.restart_btn.pack(pady=10)
+        self.restart_btn.configure(state="disabled")
         
         # Separator
         ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=20, pady=10)
         
-        # --- REPOSITORY DETAILS ---
-        details_title = ctk.CTkLabel(
-            self.settings_frame,
-            text="Repository Details",
-            font=ctk.CTkFont(family="Roboto", size=16, weight="bold"),
-            text_color=COLORS['text_primary']
-        )
-        details_title.pack(anchor="w", padx=25, pady=(0, 5))
-        
-        details_frame = ctk.CTkFrame(self.settings_frame, fg_color=COLORS['bg_primary'], corner_radius=10)
-        details_frame.pack(fill="x", padx=25, pady=5)
-        
-        ctk.CTkLabel(
-            details_frame,
-            text="Repository: rwandaxcode/gitpushand-dawnlaods",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
-        ).pack(anchor="w", padx=15, pady=5)
-        
-        self.commit_label = ctk.CTkLabel(
-            details_frame,
-            text="Last Commit: Loading...",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
-        )
-        self.commit_label.pack(anchor="w", padx=15, pady=5)
-        
-        self.author_label = ctk.CTkLabel(
-            details_frame,
-            text="Author: Loading...",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
-        )
-        self.author_label.pack(anchor="w", padx=15, pady=5)
-        
-        self.date_label = ctk.CTkLabel(
-            details_frame,
-            text="Date: Loading...",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
-        )
-        self.date_label.pack(anchor="w", padx=15, pady=5)
-        
-        # Separator
-        ctk.CTkFrame(self.settings_frame, height=1, fg_color=COLORS['border_light']).pack(fill="x", padx=20, pady=10)
-        
-        # --- ABOUT SECTION (Without theme settings) ---
+        # --- ABOUT SECTION ---
         about_section = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
         about_section.pack(fill="x", padx=25, pady=10)
         
@@ -327,9 +249,9 @@ class App(ctk.CTk):
         
         ctk.CTkLabel(
             about_frame,
-            text="App: Git & Download Panel Pro",
-            font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
+            text="Git & Download Panel Pro",
+            font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+            text_color=COLORS['text_primary']
         ).pack(anchor="w", padx=15, pady=3)
         
         ctk.CTkLabel(
@@ -339,7 +261,6 @@ class App(ctk.CTk):
             text_color=COLORS['text_secondary']
         ).pack(anchor="w", padx=15, pady=3)
         
-        # Developer section with bold color
         developer_label = ctk.CTkLabel(
             about_frame,
             text="Developed by: Niyibizi Kevin",
@@ -352,13 +273,6 @@ class App(ctk.CTk):
             about_frame,
             text="Year: 2024",
             font=ctk.CTkFont(family="Roboto", size=12),
-            text_color=COLORS['text_secondary']
-        ).pack(anchor="w", padx=15, pady=3)
-        
-        ctk.CTkLabel(
-            about_frame,
-            text="Repository: github.com/rwandaxcode/gitpushand-dawnlaods",
-            font=ctk.CTkFont(family="Roboto", size=11),
             text_color=COLORS['text_secondary']
         ).pack(anchor="w", padx=15, pady=3)
         
@@ -375,7 +289,6 @@ class App(ctk.CTk):
         )
         website_label.pack(side="left")
         
-        # Open link button
         visit_btn = ctk.CTkButton(
             website_frame,
             text="Open",
@@ -487,6 +400,9 @@ class App(ctk.CTk):
         self.bind("<Control-g>", lambda e: self.on_git_push_clicked(None))
         self.bind("<Control-d>", lambda e: self.on_download_clicked(None))
         self.bind("<Control-s>", lambda e: self.toggle_settings())
+        
+        # --- AUTO CHECK FOR UPDATE ON START ---
+        self.after(2000, self.auto_check_update)
     
     def open_website(self):
         """Open developer website"""
@@ -503,63 +419,41 @@ class App(ctk.CTk):
             self.settings_frame.pack(fill="x", padx=30, pady=(0, 15), before=self.bg_frame)
             self.status_label.configure(text="Settings opened")
             self.geometry("900x820")
-            self.check_for_updates()
     
-    def check_for_updates(self):
-        """Check for updates from GitHub"""
-        if self.update_checking:
-            return
-        
-        self.update_checking = True
-        self.check_btn.configure(state="disabled")
-        self.update_status.configure(text="Checking for updates...", text_color=COLORS['accent_orange'])
+    def auto_check_update(self):
+        """Check for updates automatically when app starts"""
+        self.status_label.configure(text="Checking for updates...")
+        self.update_status_label.configure(text="Checking for updates...")
         
         def check():
             try:
                 response = requests.get(GITHUB_API_URL, timeout=10)
                 if response.status_code == 200:
                     data = response.json()
-                    self.commit_info = {
-                        'sha': data['sha'][:7],
-                        'message': data['commit']['message'],
-                        'date': data['commit']['committer']['date'][:10],
-                        'author': data['commit']['author']['name']
-                    }
-                    
-                    self.commit_label.configure(text=f"Last Commit: {self.commit_info['message']}")
-                    self.author_label.configure(text=f"Author: {self.commit_info['author']}")
-                    self.date_label.configure(text=f"Date: {self.commit_info['date']}")
-                    self.latest_version_label.configure(text=f"Latest: v{self.commit_info['sha']}")
-                    self.update_status.configure(text=f"Update available: {self.commit_info['message']}", text_color=COLORS['accent_green'])
-                    self.update_btn.configure(state="normal")
+                    # We have update available
                     self.update_available = True
-                    self.status_label.configure(text=f"Update available: {self.commit_info['message']}")
+                    self.update_version = data['sha'][:7]
+                    
+                    # Download update automatically
+                    self.download_update_auto()
                 else:
-                    self.latest_version_label.configure(text="Could not check updates")
-                    self.update_status.configure(text="Failed to connect to GitHub", text_color=COLORS['accent_red'])
-                    self.update_btn.configure(state="disabled")
-                    self.update_available = False
-                
-                self.check_btn.configure(state="normal")
-                self.update_checking = False
-                
+                    self.update_status_label.configure(text="No updates available")
+                    self.status_label.configure(text="Ready - No updates available")
+                    self.update_progress.set(0)
+                    
             except Exception as e:
-                self.update_status.configure(text=f"Error: {str(e)}", text_color=COLORS['accent_red'])
-                self.check_btn.configure(state="normal")
-                self.update_checking = False
+                self.update_status_label.configure(text="Could not check for updates")
+                self.status_label.configure(text="Ready - Update check failed")
+                self.update_progress.set(0)
         
-        import threading
         thread = threading.Thread(target=check)
         thread.daemon = True
         thread.start()
     
-    def download_update(self):
-        """Download and install update"""
-        if not self.update_available:
-            return
-        
-        self.update_btn.configure(state="disabled")
-        self.update_status.configure(text="Downloading update...", text_color=COLORS['accent_orange'])
+    def download_update_auto(self):
+        """Download update automatically in background"""
+        self.update_status_label.configure(text="Downloading update...")
+        self.status_label.configure(text="Downloading update...")
         self.update_progress.set(0.1)
         
         def download():
@@ -568,7 +462,6 @@ class App(ctk.CTk):
                 if response.status_code != 200:
                     raise Exception("Failed to download update")
                 
-                self.update_status.configure(text="Extracting files...")
                 self.update_progress.set(0.3)
                 
                 temp_dir = tempfile.mkdtemp()
@@ -598,11 +491,14 @@ class App(ctk.CTk):
                 
                 main_file = os.path.join(extracted_dir, 'main.py')
                 if os.path.exists(main_file):
+                    # Backup current file
                     backup_path = os.path.join(current_dir, 'main_backup.py')
                     shutil.copy2(os.path.join(current_dir, 'main.py'), backup_path)
                     
+                    # Copy new file
                     shutil.copy2(main_file, os.path.join(current_dir, 'main.py'))
                     
+                    # Copy other files if they exist
                     for file in ['app.jpeg', 'image_0.png', 'ytb.png']:
                         src = os.path.join(extracted_dir, file)
                         if os.path.exists(src):
@@ -612,22 +508,24 @@ class App(ctk.CTk):
                 shutil.rmtree(temp_dir)
                 
                 self.update_progress.set(1.0)
-                self.update_status.configure(text="Update downloaded successfully!", text_color=COLORS['accent_green'])
-                self.status_label.configure(text="Update ready! Restarting...")
-                
-                if messagebox.askyesno("Update Ready", "Update has been downloaded. Do you want to restart the app now?"):
-                    python = sys.executable
-                    os.execl(python, python, *sys.argv)
+                self.update_status_label.configure(text=f"Update ready! (v{self.update_version})")
+                self.status_label.configure(text=f"Update ready! Restart to apply")
+                self.restart_btn.configure(state="normal")
                 
             except Exception as e:
-                self.update_status.configure(text=f"Update failed: {str(e)}", text_color=COLORS['accent_red'])
-                self.update_btn.configure(state="normal")
-                messagebox.showerror("Update Error", f"Failed to update: {str(e)}")
+                self.update_status_label.configure(text=f"Update failed: {str(e)[:50]}")
+                self.status_label.configure(text="Update failed")
+                self.update_progress.set(0)
         
-        import threading
         thread = threading.Thread(target=download)
         thread.daemon = True
         thread.start()
+    
+    def restart_app(self):
+        """Restart app to apply update"""
+        if messagebox.askyesno("Restart", "Restart app to apply update?"):
+            python = sys.executable
+            os.execl(python, python, *sys.argv)
     
     def animate_progress(self, progress_bar, target, duration=1000):
         if self.animation_running:
