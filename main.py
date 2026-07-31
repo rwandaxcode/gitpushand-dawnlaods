@@ -39,6 +39,7 @@ COLORS = {
 class SmoothButton(ctk.CTkButton):
     """Button isa na macOS/Deepin ihora smooth"""
     def __init__(self, master, **kwargs):
+        # Remove conflicting arguments
         if 'fg_color' in kwargs:
             kwargs.pop('fg_color')
         if 'hover_color' in kwargs:
@@ -125,7 +126,6 @@ class DownloadWindow(ctk.CTkToplevel):
         self.resizable(False, False)
         self.configure(fg_color=COLORS['bg_secondary'])
         
-        # Variables
         self.download_type = "website"
         
         # Header
@@ -332,6 +332,19 @@ class DownloadWindow(ctk.CTkToplevel):
             self.folder_entry.delete(0, "end")
             self.folder_entry.insert(0, folder)
     
+    def safe_update_ui(self, widget, **kwargs):
+        """Safely update UI from thread"""
+        def update():
+            try:
+                for key, value in kwargs.items():
+                    if key == "text":
+                        widget.configure(text=value)
+                    elif key == "text_color":
+                        widget.configure(text_color=value)
+            except:
+                pass
+        self.after(0, update)
+    
     def execute_download(self):
         url = self.url_entry.get().strip()
         folder = self.folder_entry.get().strip()
@@ -373,7 +386,7 @@ class DownloadWindow(ctk.CTkToplevel):
         try:
             self.output_text.insert("end", f"Downloading website: {url}\n")
             self.output_text.insert("end", f"Save to: {folder}\n\n")
-            self.download_status.configure(text="Downloading website...", text_color=COLORS['accent_orange'])
+            self.safe_update_ui(self.download_status, text="Downloading website...", text_color=COLORS['accent_orange'])
             self.download_progress.set(0.2)
             
             try:
@@ -381,7 +394,7 @@ class DownloadWindow(ctk.CTkToplevel):
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
                 
                 if result.returncode == 0:
-                    self.download_status.configure(text="Website downloaded successfully!", text_color=COLORS['accent_green'])
+                    self.safe_update_ui(self.download_status, text="Website downloaded successfully!", text_color=COLORS['accent_green'])
                     self.download_progress.set(1.0)
                     self.output_text.insert("end", "\n--- Download complete! ---\n")
                     self.output_text.insert("end", f"Website saved to: {folder}\n")
@@ -397,7 +410,7 @@ class DownloadWindow(ctk.CTkToplevel):
                     with open(html_file, 'w', encoding='utf-8') as f:
                         f.write(response.text)
                     
-                    self.download_status.configure(text="Website downloaded successfully!", text_color=COLORS['accent_green'])
+                    self.safe_update_ui(self.download_status, text="Website downloaded successfully!", text_color=COLORS['accent_green'])
                     self.download_progress.set(1.0)
                     self.output_text.insert("end", "\n--- Download complete! ---\n")
                     self.output_text.insert("end", f"Website saved to: {html_file}\n")
@@ -406,7 +419,7 @@ class DownloadWindow(ctk.CTkToplevel):
                     raise Exception(f"Failed to download: {response.status_code}")
             
         except Exception as e:
-            self.download_status.configure(text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
+            self.safe_update_ui(self.download_status, text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
             self.download_progress.set(0)
             self.output_text.insert("end", f"\nError: {str(e)}\n")
             messagebox.showerror("Download Failed", f"Failed to download website:\n{str(e)}")
@@ -418,18 +431,43 @@ class DownloadWindow(ctk.CTkToplevel):
         try:
             self.output_text.insert("end", f"Downloading repository: {url}\n")
             self.output_text.insert("end", f"Save to: {folder}\n\n")
-            self.download_status.configure(text="Downloading repository...", text_color=COLORS['accent_orange'])
+            self.safe_update_ui(self.download_status, text="Downloading repository...", text_color=COLORS['accent_orange'])
             self.download_progress.set(0.2)
             
+            # Check if it's a GitHub URL
             if 'github.com' in url:
+                # Extract username and repo
                 parts = url.rstrip('/').split('/')
                 if len(parts) >= 5:
                     username = parts[-2]
                     repo = parts[-1]
                     if repo.endswith('.git'):
                         repo = repo[:-4]
-                    zip_url = f"https://github.com/{username}/{repo}/archive/main.zip"
                     
+                    # Try git clone first
+                    try:
+                        self.output_text.insert("end", "Trying git clone...\n")
+                        repo_path = os.path.join(folder, repo)
+                        cmd = f'git clone "{url}" "{repo_path}" 2>&1'
+                        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+                        
+                        if result.returncode == 0:
+                            self.safe_update_ui(self.download_status, text="Repository cloned successfully!", text_color=COLORS['accent_green'])
+                            self.download_progress.set(1.0)
+                            self.output_text.insert("end", "\n--- Clone complete! ---\n")
+                            self.output_text.insert("end", f"Repository saved to: {repo_path}\n")
+                            messagebox.showinfo("Success", "Repository cloned successfully!")
+                            self.download_btn.configure(state="normal", text="Download")
+                            self.output_text.configure(state="disabled")
+                            return
+                        else:
+                            self.output_text.insert("end", f"Git clone failed: {result.stderr}\n")
+                            self.output_text.insert("end", "Trying zip download...\n")
+                    except:
+                        self.output_text.insert("end", "Git clone failed, trying zip...\n")
+                    
+                    # Fallback to zip download
+                    zip_url = f"https://github.com/{username}/{repo}/archive/main.zip"
                     self.output_text.insert("end", f"Downloading: {zip_url}\n")
                     
                     response = requests.get(zip_url, stream=True, timeout=60)
@@ -454,7 +492,7 @@ class DownloadWindow(ctk.CTkToplevel):
                         
                         os.remove(zip_path)
                         
-                        self.download_status.configure(text="Repository downloaded successfully!", text_color=COLORS['accent_green'])
+                        self.safe_update_ui(self.download_status, text="Repository downloaded successfully!", text_color=COLORS['accent_green'])
                         self.download_progress.set(1.0)
                         self.output_text.insert("end", "\n--- Download complete! ---\n")
                         self.output_text.insert("end", f"Repository saved to: {folder}\n")
@@ -467,7 +505,7 @@ class DownloadWindow(ctk.CTkToplevel):
                 raise Exception("Not a GitHub URL")
                 
         except Exception as e:
-            self.download_status.configure(text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
+            self.safe_update_ui(self.download_status, text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
             self.download_progress.set(0)
             self.output_text.insert("end", f"\nError: {str(e)}\n")
             messagebox.showerror("Download Failed", f"Failed to download repository:\n{str(e)}")
@@ -479,10 +517,11 @@ class DownloadWindow(ctk.CTkToplevel):
         try:
             self.output_text.insert("end", f"Downloading YouTube video: {url}\n")
             self.output_text.insert("end", f"Save to: {folder}\n\n")
-            self.download_status.configure(text="Downloading YouTube video...", text_color=COLORS['accent_orange'])
+            self.safe_update_ui(self.download_status, text="Downloading YouTube video...", text_color=COLORS['accent_orange'])
             self.download_progress.set(0.1)
             
             try:
+                # Check for yt-dlp
                 try:
                     subprocess.run("yt-dlp --version", shell=True, capture_output=True, check=True)
                     downloader = "yt-dlp"
@@ -499,7 +538,7 @@ class DownloadWindow(ctk.CTkToplevel):
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=600)
                 
                 if result.returncode == 0:
-                    self.download_status.configure(text="YouTube video downloaded successfully!", text_color=COLORS['accent_green'])
+                    self.safe_update_ui(self.download_status, text="YouTube video downloaded successfully!", text_color=COLORS['accent_green'])
                     self.download_progress.set(1.0)
                     self.output_text.insert("end", "\n--- Download complete! ---\n")
                     self.output_text.insert("end", f"Video saved to: {folder}\n")
@@ -512,12 +551,12 @@ class DownloadWindow(ctk.CTkToplevel):
                 self.output_text.insert("end", f"\nError: {str(e)}\n")
                 self.output_text.insert("end", "\nPlease install yt-dlp:\n")
                 self.output_text.insert("end", "  pip install yt-dlp\n")
-                self.download_status.configure(text="yt-dlp not installed", text_color=COLORS['accent_red'])
+                self.safe_update_ui(self.download_status, text="yt-dlp not installed", text_color=COLORS['accent_red'])
                 self.download_progress.set(0)
                 messagebox.showerror("Download Failed", f"Failed to download YouTube video:\n{str(e)}")
             
         except Exception as e:
-            self.download_status.configure(text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
+            self.safe_update_ui(self.download_status, text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
             self.download_progress.set(0)
             self.output_text.insert("end", f"\nError: {str(e)}\n")
             messagebox.showerror("Download Failed", f"Failed to download YouTube video:\n{str(e)}")
@@ -754,7 +793,6 @@ class GitSetupWindow(ctk.CTkToplevel):
             self.ssh_key_display.configure(state="disabled")
     
     def generate_ssh_key(self):
-        """Generate SSH key - all inside app"""
         self.generate_ssh_btn.configure(state="disabled", text="Generating...")
         self.ssh_status_label.configure(text="Generating SSH key...", text_color=COLORS['accent_orange'])
         
@@ -766,7 +804,6 @@ class GitSetupWindow(ctk.CTkToplevel):
                 
                 key_path = os.path.join(ssh_dir, "id_rsa")
                 
-                # Check if key exists
                 if os.path.exists(key_path + ".pub"):
                     with open(f"{key_path}.pub", 'r') as f:
                         self.ssh_key = f.read().strip()
@@ -783,16 +820,13 @@ class GitSetupWindow(ctk.CTkToplevel):
                     self.generate_ssh_btn.configure(state="normal", text="Generate SSH Key")
                     return
                 
-                # Generate new key
                 email = self.email_entry.get().strip()
                 if not email:
                     email = "user@example.com"
                 
-                # Use subprocess to generate key - but capture output in app
                 cmd = f'ssh-keygen -t rsa -b 4096 -C "{email}" -f "{key_path}" -N ""'
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True, check=True)
                 
-                # Read the public key
                 with open(f"{key_path}.pub", 'r') as f:
                     self.ssh_key = f.read().strip()
                 
@@ -801,13 +835,11 @@ class GitSetupWindow(ctk.CTkToplevel):
                 self.copy_ssh_btn.configure(state="normal")
                 self.next_btn.configure(state="normal")
                 
-                # Show key in display
                 self.ssh_key_display.configure(state="normal")
                 self.ssh_key_display.delete("1.0", "end")
                 self.ssh_key_display.insert("1.0", self.ssh_key)
                 self.ssh_key_display.configure(state="disabled")
                 
-                # Save config
                 self.save_config()
                 
                 self.generate_ssh_btn.configure(state="normal", text="Generate SSH Key")
@@ -829,13 +861,11 @@ class GitSetupWindow(ctk.CTkToplevel):
             messagebox.showinfo("Copied", "SSH key copied to clipboard!")
     
     def test_ssh_connection(self):
-        """Test SSH connection - output inside app"""
         self.test_btn.configure(state="disabled", text="Testing...")
         self.test_status.configure(text="Testing SSH connection...", text_color=COLORS['accent_orange'])
         
         def test():
             try:
-                # Use ssh -T but capture output
                 result = subprocess.run(
                     "ssh -T git@github.com -o StrictHostKeyChecking=no -o ConnectTimeout=10",
                     shell=True,
@@ -844,7 +874,6 @@ class GitSetupWindow(ctk.CTkToplevel):
                     timeout=15
                 )
                 
-                # Check output for success
                 if "successfully authenticated" in result.stderr or "You've successfully authenticated" in result.stderr:
                     self.test_status.configure(text="SSH connection successful!", text_color=COLORS['accent_green'])
                     self.next_btn.configure(state="normal")
@@ -867,7 +896,6 @@ class GitSetupWindow(ctk.CTkToplevel):
         thread.start()
     
     def save_config(self):
-        """Save config in app storage"""
         self.git_config.set_config(
             self.name_entry.get().strip(),
             self.email_entry.get().strip(),
@@ -886,13 +914,11 @@ class GitSetupWindow(ctk.CTkToplevel):
             messagebox.showwarning("SSH Key", "Please generate SSH key first")
             return
         
-        # Save config
         self.save_config()
         
         self.setup_complete = True
         self.destroy()
         
-        # Open push window
         self.parent.show_push_window(name, email)
 
 class GitPushWindow(ctk.CTkToplevel):
@@ -1037,7 +1063,7 @@ class GitPushWindow(ctk.CTkToplevel):
         )
         self.push_status.pack(anchor="w", pady=5)
         
-        # Output - shows all git operations inside app
+        # Output
         self.output_text = ctk.CTkTextbox(
             content,
             height=120,
@@ -1056,8 +1082,20 @@ class GitPushWindow(ctk.CTkToplevel):
             self.folder_entry.delete(0, "end")
             self.folder_entry.insert(0, folder)
     
+    def safe_update_ui(self, widget, **kwargs):
+        """Safely update UI from thread"""
+        def update():
+            try:
+                for key, value in kwargs.items():
+                    if key == "text":
+                        widget.configure(text=value)
+                    elif key == "text_color":
+                        widget.configure(text_color=value)
+            except:
+                pass
+        self.after(0, update)
+    
     def execute_push(self):
-        """Execute git push - all output inside app"""
         repo_url = self.repo_entry.get().strip()
         folder = self.folder_entry.get().strip()
         
@@ -1074,7 +1112,7 @@ class GitPushWindow(ctk.CTkToplevel):
             return
         
         self.push_btn.configure(state="disabled", text="Pushing...")
-        self.push_status.configure(text="Initializing push...", text_color=COLORS['accent_orange'])
+        self.safe_update_ui(self.push_status, text="Initializing push...", text_color=COLORS['accent_orange'])
         self.push_progress.set(0.1)
         self.output_text.configure(state="normal")
         self.output_text.delete("1.0", "end")
@@ -1090,7 +1128,7 @@ class GitPushWindow(ctk.CTkToplevel):
                 # Step 1: Check if git is initialized
                 git_dir = os.path.join(folder, ".git")
                 if not os.path.exists(git_dir):
-                    self.push_status.configure(text="Initializing git repository...", text_color=COLORS['accent_orange'])
+                    self.safe_update_ui(self.push_status, text="Initializing git repository...", text_color=COLORS['accent_orange'])
                     self.push_progress.set(0.2)
                     self.output_text.insert("end", "[1] Initializing git repository...\n")
                     
@@ -1102,7 +1140,7 @@ class GitPushWindow(ctk.CTkToplevel):
                         raise Exception("Git init failed")
                 
                 # Step 2: Set user config
-                self.push_status.configure(text="Configuring user...", text_color=COLORS['accent_orange'])
+                self.safe_update_ui(self.push_status, text="Configuring user...", text_color=COLORS['accent_orange'])
                 self.push_progress.set(0.3)
                 self.output_text.insert("end", "[2] Configuring user...\n")
                 
@@ -1111,7 +1149,7 @@ class GitPushWindow(ctk.CTkToplevel):
                 self.output_text.insert("end", f"    User: {self.name} <{self.email}>\n")
                 
                 # Step 3: Add remote
-                self.push_status.configure(text="Adding remote...", text_color=COLORS['accent_orange'])
+                self.safe_update_ui(self.push_status, text="Adding remote...", text_color=COLORS['accent_orange'])
                 self.push_progress.set(0.4)
                 self.output_text.insert("end", "[3] Adding remote...\n")
                 
@@ -1124,7 +1162,7 @@ class GitPushWindow(ctk.CTkToplevel):
                     raise Exception("Remote add failed")
                 
                 # Step 4: Add all files
-                self.push_status.configure(text="Adding files...", text_color=COLORS['accent_orange'])
+                self.safe_update_ui(self.push_status, text="Adding files...", text_color=COLORS['accent_orange'])
                 self.push_progress.set(0.5)
                 self.output_text.insert("end", "[4] Adding files...\n")
                 
@@ -1136,7 +1174,7 @@ class GitPushWindow(ctk.CTkToplevel):
                     raise Exception("Git add failed")
                 
                 # Step 5: Commit
-                self.push_status.configure(text="Committing...", text_color=COLORS['accent_orange'])
+                self.safe_update_ui(self.push_status, text="Committing...", text_color=COLORS['accent_orange'])
                 self.push_progress.set(0.6)
                 self.output_text.insert("end", "[5] Creating commit...\n")
                 
@@ -1145,12 +1183,17 @@ class GitPushWindow(ctk.CTkToplevel):
                     self.output_text.insert("end", "    Commit created\n")
                 else:
                     self.output_text.insert("end", f"    Note: {result.stderr}\n")
-                    # Continue even if no changes to commit
                 
-                # Step 6: Push
-                self.push_status.configure(text="Pushing to GitHub...", text_color=COLORS['accent_orange'])
+                # Step 6: Push - Use HTTPS with token or SSH
+                self.safe_update_ui(self.push_status, text="Pushing to GitHub...", text_color=COLORS['accent_orange'])
                 self.push_progress.set(0.7)
                 self.output_text.insert("end", "[6] Pushing to GitHub...\n")
+                
+                # Set GIT_ASKPASS to avoid terminal prompt
+                env = os.environ.copy()
+                env['GIT_ASKPASS'] = 'echo'
+                env['GIT_USERNAME'] = self.name
+                env['GIT_EMAIL'] = self.email
                 
                 push_cmd = "git push -u origin main"
                 if self.force_push.get():
@@ -1162,19 +1205,22 @@ class GitPushWindow(ctk.CTkToplevel):
                 else:
                     self.output_text.insert("end", "    Using normal push\n")
                 
+                self.output_text.insert("end", f"    Command: {push_cmd}\n")
+                
+                # Run git push with environment variables
                 result = subprocess.run(
                     f'cd "{folder}" && {push_cmd}',
                     shell=True,
                     capture_output=True,
                     text=True,
-                    timeout=120
+                    timeout=120,
+                    env=env
                 )
                 
                 self.push_progress.set(0.9)
-                self.output_text.insert("end", f"    Command: {push_cmd}\n")
                 
                 if result.returncode == 0:
-                    self.push_status.configure(text="Push completed successfully!", text_color=COLORS['accent_green'])
+                    self.safe_update_ui(self.push_status, text="Push completed successfully!", text_color=COLORS['accent_green'])
                     self.push_progress.set(1.0)
                     self.output_text.insert("end", "\n" + "=" * 40 + "\n")
                     self.output_text.insert("end", "SUCCESS: Push completed successfully!\n")
@@ -1182,7 +1228,7 @@ class GitPushWindow(ctk.CTkToplevel):
                         self.output_text.insert("end", result.stdout)
                     messagebox.showinfo("Success", "Git Push completed successfully!")
                 else:
-                    self.push_status.configure(text="Push failed", text_color=COLORS['accent_red'])
+                    self.safe_update_ui(self.push_status, text="Push failed", text_color=COLORS['accent_red'])
                     self.push_progress.set(0)
                     self.output_text.insert("end", "\n" + "=" * 40 + "\n")
                     self.output_text.insert("end", "ERROR: Push failed!\n")
@@ -1193,14 +1239,14 @@ class GitPushWindow(ctk.CTkToplevel):
                 self.output_text.configure(state="disabled")
                 
             except subprocess.TimeoutExpired:
-                self.push_status.configure(text="Push timed out", text_color=COLORS['accent_red'])
+                self.safe_update_ui(self.push_status, text="Push timed out", text_color=COLORS['accent_red'])
                 self.push_btn.configure(state="normal", text="Push Now")
                 self.output_text.insert("end", "\nERROR: Push timed out\n")
                 self.output_text.configure(state="disabled")
                 messagebox.showerror("Push Failed", "Push timed out")
                 
             except Exception as e:
-                self.push_status.configure(text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
+                self.safe_update_ui(self.push_status, text=f"Error: {str(e)[:50]}", text_color=COLORS['accent_red'])
                 self.push_btn.configure(state="normal", text="Push Now")
                 self.output_text.insert("end", f"\nERROR: {str(e)}\n")
                 self.output_text.configure(state="disabled")
@@ -1644,7 +1690,6 @@ class App(ctk.CTk):
         
         # Check if already configured
         if self.git_config.is_configured():
-            # Go directly to push
             self.show_push_window(self.git_config.get_name(), self.git_config.get_email())
             return
         
