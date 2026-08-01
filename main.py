@@ -19,7 +19,6 @@ def detect_os():
     """Detect if running on Linux or Wine"""
     system = platform.system()
     if system == "Linux":
-        # Check if running under Wine
         try:
             result = subprocess.run("wine --version", shell=True, capture_output=True, text=True)
             if result.returncode == 0:
@@ -134,8 +133,6 @@ class GitConfig:
         self.config['email'] = email
         self.config['ssh_key'] = ssh_key
         self.save_config()
-        
-        # Set git config at OS level
         self.set_git_config_os(name, email)
     
     def set_git_config_os(self, name, email):
@@ -509,8 +506,7 @@ class GitSetupWindow(ctk.CTkToplevel):
                 self.save_btn.configure(state="normal")
                 self.generate_ssh_btn.configure(state="normal", text="Generate & Configure SSH Key")
                 
-                # Automatically copy public key to clipboard or show it
-                messagebox.info("SSH Key Generated", "Your SSH key has been successfully created. Make sure to add this key to your GitHub account settings!")
+                messagebox.showinfo("SSH Key Generated", "Your SSH key has been successfully created. Make sure to add this key to your GitHub account settings!")
                 
             except Exception as e:
                 self.ssh_status_label.configure(text=f"Error: {str(e)[:30]}", text_color=COLORS['accent_red'])
@@ -537,7 +533,8 @@ class GitSetupWindow(ctk.CTkToplevel):
         
         self.setup_complete = True
         self.destroy()
-        self.parent.show_push_window(name, email)
+        if hasattr(self.parent, 'show_push_window'):
+            self.parent.show_push_window(name, email)
 
 class GitPushWindow(ctk.CTkToplevel):
     """Window yo gukora Git Push via SSH - Optimized"""
@@ -728,7 +725,6 @@ class GitPushWindow(ctk.CTkToplevel):
         
         def push():
             try:
-                # Init if needed
                 git_dir = os.path.join(folder, ".git")
                 if not os.path.exists(git_dir):
                     self.safe_update_ui(self.push_status, text="Initializing...", text_color=COLORS['accent_orange'])
@@ -736,28 +732,23 @@ class GitPushWindow(ctk.CTkToplevel):
                     self.output_text.insert("end", "Initializing git...\n")
                     subprocess.run(f'cd "{folder}" && git init', shell=True, capture_output=True, check=True)
                 
-                # Config user locally
                 self.push_progress.set(0.3)
                 subprocess.run(f'cd "{folder}" && git config user.name "{self.name}"', shell=True, capture_output=True)
                 subprocess.run(f'cd "{folder}" && git config user.email "{self.email}"', shell=True, capture_output=True)
                 
-                # Add remote (Ensure SSH URL is used)
                 self.push_progress.set(0.4)
                 self.output_text.insert("end", "Configuring SSH remote...\n")
                 subprocess.run(f'cd "{folder}" && git remote remove origin', shell=True, capture_output=True)
                 subprocess.run(f'cd "{folder}" && git remote add origin "{repo_url}"', shell=True, capture_output=True, check=True)
                 
-                # Add files
                 self.push_progress.set(0.5)
                 self.output_text.insert("end", "Adding files...\n")
                 subprocess.run(f'cd "{folder}" && git add .', shell=True, capture_output=True, check=True)
                 
-                # Commit
                 self.push_progress.set(0.6)
                 self.output_text.insert("end", "Committing...\n")
                 subprocess.run(f'cd "{folder}" && git commit -m "Automated SSH commit"', shell=True, capture_output=True)
                 
-                # Push via SSH
                 self.push_progress.set(0.7)
                 self.output_text.insert("end", "Pushing via SSH...\n")
                 
@@ -795,7 +786,7 @@ class GitPushWindow(ctk.CTkToplevel):
             except Exception as e:
                 self.safe_update_ui(self.push_status, text=f"Error: {str(e)[:40]}", text_color=COLORS['accent_red'])
                 self.push_btn.configure(state="normal", text="Push via SSH Now")
-                self.output_text.insert("end", f"\nERROR: {str(e)}\n")
+                self.output_text.insert(f"\nERROR: {str(e)}\n")
                 self.output_text.configure(state="disabled")
                 messagebox.showerror("Push Failed", f"Push failed:\n{str(e)}")
         
